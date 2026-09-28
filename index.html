@@ -84,7 +84,7 @@
       <h1>Hospital data you can explore without exposing a single patient.</h1>
       <p class="lede">SimWard is a student concept for hospital analytics. AI agents create synthetic patient records, test them for accuracy and privacy, and help analysts run their questions. A person signs off before anything is released.</p>
       <a class="btn chat-link" href="#ask">Open the assistant</a>
-      <span class="hint" id="widget-hint" hidden>Or use the chat bubble in the bottom corner.</span>
+      <span class="hint" id="widget-hint">Or use the chat bubble in the bottom corner.</span>
     </div>
     <figure>
       <svg id="field" viewBox="0 0 400 300" role="img" aria-label="Illustration: synthetic records, shown as violet dots, follow the same pattern as real records, shown as grey rings."></svg>
@@ -162,6 +162,9 @@
 })();
 </script>
 
-<!-- CHATBASE_WIDGET_SCRIPT -->
+<!-- Chatbase chat widget -->
+<script>
+(function(){if(!window.chatbase||window.chatbase("getState")!=="initialized"){window.chatbase=(...arguments)=>{if(!window.chatbase.q){window.chatbase.q=[]}window.chatbase.q.push(arguments)};window.chatbase=new Proxy(window.chatbase,{get(target,prop){if(prop==="q"){return target.q}return(...args)=>target(prop,...args)}})}const onLoad=function(){const script=document.createElement("script");script.src="https://www.chatbase.co/embed.min.js";script.id="9_7x9GsZdZyELpq3squKh";script.domain="www.chatbase.co";document.body.appendChild(script)};if(document.readyState==="complete"){onLoad()}else{window.addEventListener("load",onLoad)}})();
+</script>
 </body>
 </html>
