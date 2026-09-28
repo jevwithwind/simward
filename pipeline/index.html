@@ -1,0 +1,1674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SimWard Pipeline | Synthetic dataset review prototype</title>
+<meta name="description" content="SimWard prototype: track data requests and synthetic dataset candidates from generation through validation and steward sign-off to release. Fictional data, simulated agents.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F5F6; --surface:#FFFFFF; --surface-2:#E7EEEF; --ink:#13262B; --muted:#4A5D62; --rule:#CBD6D8;
+    --teal:#0B6B66; --teal-dark:#084F4B; --on-teal:#FFFFFF; --synth:#5A48C8; --synth-soft:#ECE9FF; --ring:#9DAFB3;
+    --err:#B3261E; --err-bg:#FCEBE9; --warn:#7A5200; --warn-bg:#FFF3D6; --warn-line:#E0A526; --info-bg:#E3F1F0;
+    /* Pipeline stages: one validated teal ramp, light (early) to dark (released). Rejected uses the reserved error red. */
+    --s-generated:#7BBDB6; --s-validation:#4AA198; --s-review:#26847C; --s-approved:#0B6B66; --s-released:#064541; --s-rejected:#B3261E;
+    --shadow:0 1px 2px rgba(19,38,43,.06),0 4px 14px rgba(19,38,43,.06);
+    --radius:.4rem; --wrap:84rem;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
+      --teal:#4FB5AC; --teal-dark:#76CDC5; --on-teal:#062220; --synth:#A99BFF; --synth-soft:#2A2550; --ring:#6F868B;
+      --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
+      --s-generated:#2A6E68; --s-validation:#3A8F87; --s-review:#52AEA5; --s-approved:#7ECBC3; --s-released:#B5E6E0; --s-rejected:#FF8A80;
+      --shadow:0 1px 2px rgba(0,0,0,.3);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
+    --teal:#4FB5AC; --teal-dark:#76CDC5; --on-teal:#062220; --synth:#A99BFF; --synth-soft:#2A2550; --ring:#6F868B;
+    --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
+    --s-generated:#2A6E68; --s-validation:#3A8F87; --s-review:#52AEA5; --s-approved:#7ECBC3; --s-released:#B5E6E0; --s-rejected:#FF8A80;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:1rem/1.55 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 1.5rem}
+  h1,h2,h3{line-height:1.2;overflow-wrap:anywhere}
+  p,li,dd,td,th,blockquote{overflow-wrap:anywhere}
+  a{color:var(--teal)}
+  :focus-visible{outline:3px solid var(--synth);outline-offset:2px}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .skip{position:absolute;left:1rem;top:-3rem;background:var(--teal);color:var(--on-teal);padding:.5rem .8rem;border-radius:var(--radius);z-index:10}
+  .skip:focus{top:.5rem}
+  .muted{color:var(--muted)}
+  .small{font-size:.88rem}
+
+  /* Header */
+  .top{border-bottom:1px solid var(--rule)}
+  .top-row{display:flex;align-items:center;gap:.5rem .75rem;padding-top:1.1rem;padding-bottom:.6rem;flex-wrap:wrap}
+  .mark{display:inline-flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.25rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+  .mark svg{width:28px;height:28px;flex:none}
+  .product{font-weight:700;color:var(--muted);padding-left:.75rem;border-left:1px solid var(--rule)}
+  .proto-tag{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--synth);background:var(--synth-soft);padding:.15rem .55rem;border-radius:1rem}
+  .top-actions{margin-left:auto;display:flex;gap:.75rem;align-items:center}
+  .proto-note{margin:0;padding-bottom:.4rem;font-size:.85rem;color:var(--muted)}
+  .tabs{display:flex;gap:.15rem;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:0;border-bottom:3px solid transparent;padding:.65rem .8rem .55rem;font:inherit;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--teal)}
+  .tab .n{display:inline-block;min-width:1.3rem;margin-left:.3rem;padding:0 .3rem;border-radius:1rem;background:var(--err-bg);color:var(--err);font-size:.75rem;text-align:center}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;background:var(--teal);color:var(--on-teal);border:1px solid var(--teal);
+    font:inherit;font-weight:700;padding:.55rem 1rem;border-radius:var(--radius);cursor:pointer;text-decoration:none;line-height:1.2;min-height:2.5rem;white-space:nowrap}
+  .btn:hover{background:var(--teal-dark);border-color:var(--teal-dark)}
+  .btn.sm{padding:.35rem .7rem;font-size:.88rem;min-height:2.1rem}
+  .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--ring)}
+  .btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
+  .btn.danger{background:var(--err);border-color:var(--err);color:#fff}
+  :root[data-theme="dark"] .btn.danger{color:#2A0A08}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.danger{color:#2A0A08}}
+  .btn.danger:hover{filter:brightness(.92)}
+  .btn.ghost.danger-txt{color:var(--err)}
+  .btn.ghost.danger-txt:hover{border-color:var(--err)}
+  .btn[disabled]{opacity:.6;cursor:progress}
+  @media (pointer:coarse){.btn.sm{min-height:2.6rem}}
+  .linkbtn{appearance:none;background:none;border:0;padding:0;font:inherit;color:var(--teal);text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+  .linkbtn.strong{font-weight:700;color:var(--ink)}
+  .spin{display:inline-block;width:.85rem;height:.85rem;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-.12rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Layout */
+  main{padding-bottom:2rem}
+  .viewhead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.5rem 1rem;margin:1.75rem 0 1rem}
+  .viewhead h1{font-size:1.6rem;margin:0}
+  .viewhead p{margin:0;flex:1 1 20rem;color:var(--muted)}
+  .viewhead .btn{margin-left:auto}
+  .block{background:var(--surface);border:1px solid var(--rule);border-radius:.6rem;padding:1.1rem 1.25rem;min-width:0}
+  .block h2{font-size:1.15rem;margin:0 0 .75rem;display:flex;align-items:center;gap:.5rem}
+  .block + .block, .ov-grid + .block, .block + .ov-grid{margin-top:1.25rem}
+  .ov-grid > .block{margin-top:0}
+  .ov-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1.25rem;margin-top:1.25rem}
+  .pill{font-size:.78rem;font-weight:700;background:var(--surface-2);color:var(--muted);border-radius:1rem;padding:.05rem .5rem}
+  .empty{border:1px dashed var(--ring);border-radius:.6rem;padding:1.25rem;text-align:center;color:var(--muted);background:var(--surface)}
+  .empty p{margin:0 0 .75rem}
+  .empty p:last-child{margin-bottom:0}
+
+  /* Stage strip */
+  .strip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem}
+  .step{--c:var(--ring);width:100%;height:100%;text-align:left;background:var(--surface);border:1px solid var(--rule);border-top:5px solid var(--c);border-radius:var(--radius);
+    padding:.7rem .85rem;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:.15rem}
+  .step:hover{border-color:var(--teal);border-top-color:var(--c)}
+  .step-n{font-size:1.9rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .step-l{color:var(--muted);font-size:.9rem;line-height:1.25;overflow-wrap:normal}
+  .strip-note{margin:.6rem 0 0}
+
+  /* Stage colours */
+  .st-generated{--c:var(--s-generated)} .st-validation{--c:var(--s-validation)} .st-review{--c:var(--s-review)}
+  .st-approved{--c:var(--s-approved)} .st-released{--c:var(--s-released)} .st-rejected{--c:var(--s-rejected)}
+  .badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;padding:.1rem .5rem;border-radius:1rem;background:var(--surface-2);color:var(--ink);white-space:nowrap}
+  .badge::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:var(--c,var(--ring))}
+  .badge.open{--c:var(--teal)} .badge.closed{--c:var(--ring)}
+
+  /* Attention + reviews */
+  .attn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+  .attn{display:grid;grid-template-columns:5.6rem minmax(0,1fr) auto;gap:.6rem;align-items:center;padding:.55rem .7rem;border:1px solid var(--rule);border-radius:var(--radius)}
+  .attn p{margin:0;font-size:.92rem}
+  .tag{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.12rem .4rem;border-radius:.2rem;text-align:center;justify-self:start}
+  .tag.err{color:var(--err);background:var(--err-bg)} .tag.warn{color:var(--warn);background:var(--warn-bg)} .tag.info{color:var(--teal);background:var(--info-bg)}
+  .mini-rev{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+  .mini-rev li{display:grid;grid-template-columns:5.8rem minmax(0,1fr);gap:.75rem;padding:.55rem 0;border-top:1px solid var(--rule)}
+  .mini-rev li:first-child{border-top:0}
+  .mini-rev .when{display:flex;flex-direction:column;font-size:.9rem}
+  .mini-rev .when strong{font-size:.95rem}
+  .mini-rev p{margin:0}
+
+  /* Legend, stacked bar */
+  .legend{display:flex;flex-wrap:wrap;gap:.3rem 1rem;list-style:none;padding:0;margin:0 0 .6rem;font-size:.85rem;color:var(--muted)}
+  .legend li{display:inline-flex;align-items:center;gap:.35rem}
+  .sw{display:inline-block;width:.8rem;height:.8rem;border-radius:2px;background:var(--c)}
+  .sbar{display:flex;gap:2px;height:.8rem;border-radius:4px;overflow:hidden;min-width:5rem}
+  .sbar .seg{min-width:4px;background:var(--c)}
+  .sbar-empty{font-size:.85rem;color:var(--muted)}
+  .rtable{width:100%;border-collapse:collapse;font-size:.95rem}
+  .rtable th,.rtable td{text-align:left;padding:.6rem .5rem;border-top:1px solid var(--rule);vertical-align:middle}
+  .rtable thead th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-top:0;padding-top:0}
+  .rtable td.bar-cell{width:38%}
+  .rtable .num{font-variant-numeric:tabular-nums}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;font-weight:700;background:var(--synth-soft);color:var(--synth);padding:.08rem .4rem;border-radius:.2rem;white-space:nowrap}
+
+  /* Toolbar */
+  .toolbar{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1rem}
+  .toolbar .fld{flex:1 1 13rem;max-width:22rem}
+  .toolbar .fld.grow{max-width:none}
+  .chk{display:inline-flex;align-items:center;gap:.45rem;min-height:2.5rem;font-weight:700;font-size:.92rem;cursor:pointer}
+  .chk input{width:1.1rem;height:1.1rem;margin:0;accent-color:var(--teal)}
+  .filter-note{margin:0 0 .75rem;font-size:.9rem;color:var(--muted)}
+  .seg-group{display:inline-flex;border:1px solid var(--ring);border-radius:var(--radius);overflow:hidden}
+  .seg-btn{appearance:none;border:0;background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:.9rem;padding:.45rem .8rem;cursor:pointer;min-height:2.5rem}
+  .seg-btn + .seg-btn{border-left:1px solid var(--ring)}
+  .seg-btn[aria-pressed="true"]{background:var(--teal);color:var(--on-teal)}
+
+  /* Forms */
+  .fld{display:flex;flex-direction:column;gap:.3rem;min-width:0}
+  .fld > label, .fld > span, .fld legend{font-weight:700;font-size:.9rem}
+  .fld small, .hint-txt{font-weight:400;color:var(--muted);font-size:.82rem}
+  input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:.5rem .6rem;min-width:0;width:100%;min-height:2.5rem}
+  textarea{resize:vertical;line-height:1.45}
+  input[readonly]{background:var(--surface-2);color:var(--muted)}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0}
+  [aria-invalid="true"]{border-color:var(--err);box-shadow:0 0 0 1px var(--err)}
+  .field-err{color:var(--err);font-size:.85rem;margin:0;font-weight:700}
+  .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+  .form-grid .full{grid-column:1/-1}
+  fieldset{border:0;padding:0;margin:0;min-width:0}
+  .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin-top:.3rem}
+  .check-row{display:flex;align-items:flex-start;gap:.5rem;font-weight:700;cursor:pointer}
+  .check-row input{width:1.15rem;height:1.15rem;min-height:0;margin:.15rem 0 0;accent-color:var(--teal);flex:none}
+
+  /* Notices */
+  .notice{border-radius:var(--radius);padding:.7rem .9rem;border:1px solid;font-size:.93rem}
+  .notice p{margin:0}
+  .notice p + p, .notice p + ul{margin-top:.4rem}
+  .notice ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.4rem}
+  .notice li{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+  .notice.warn{background:var(--warn-bg);border-color:var(--warn-line)}
+  .notice.err{background:var(--err-bg);border-color:var(--err)}
+  .notice.info{background:var(--info-bg);border-color:var(--teal)}
+
+  /* Board */
+  .board{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(14rem,1fr);gap:.75rem;overflow-x:auto;padding-bottom:.75rem;
+    scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+  .col{background:var(--surface-2);border-radius:.6rem;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;min-width:0;scroll-snap-align:start;border-top:5px solid var(--c)}
+  .col.drop-over{outline:2px dashed var(--teal);outline-offset:-2px}
+  .col.flash{animation:flash 1.4s ease-out}
+  @keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--synth)}100%{box-shadow:0 0 0 0 transparent}}
+  .col-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+  .col-head h2{font-size:1rem;margin:0}
+  .col-head h2:focus{outline:none}
+  .col-head h2:focus-visible{outline:3px solid var(--synth)}
+  .count{font-size:.8rem;font-weight:700;background:var(--surface);border:1px solid var(--rule);border-radius:1rem;padding:0 .5rem;font-variant-numeric:tabular-nums}
+  .col-hint{margin:0;font-size:.82rem;color:var(--muted);line-height:1.35}
+  .col-body{display:flex;flex-direction:column;gap:.6rem;min-height:4rem}
+  .empty-col{border:1px dashed var(--ring);border-radius:var(--radius);padding:.9rem;font-size:.86rem;color:var(--muted);text-align:center;margin:0}
+  .card{position:relative;background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:.7rem .75rem;display:flex;flex-direction:column;gap:.35rem;box-shadow:var(--shadow);cursor:grab;min-width:0}
+  .card.dragging{opacity:.45}
+  .card.card-err{border-left:4px solid var(--err)}
+  .card-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+  .card-name{font:inherit;font-weight:700;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-align:left;
+    text-decoration:underline;text-decoration-color:var(--ring);text-underline-offset:3px;overflow-wrap:anywhere}
+  .card-name:hover{text-decoration-color:var(--teal)}
+  .lock{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .card p{margin:0}
+  .card-req{font-size:.9rem;color:var(--ink)}
+  .card-meta{font-size:.84rem;color:var(--muted)}
+  .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+  .scores-na{font-size:.84rem;color:var(--muted);font-style:italic}
+  .rev-line{font-size:.84rem;color:var(--muted)}
+  .reason{font-size:.86rem}
+  .card-actions{display:flex;gap:.4rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.25rem}
+
+  /* Score strip (bullet style: bar from 0, tick at request minimum) */
+  .scores{display:grid;gap:.2rem;margin:.1rem 0}
+  .sc{display:grid;grid-template-columns:.9rem minmax(0,1fr) 1.7rem 2.3rem;align-items:center;gap:.4rem;font-size:.8rem}
+  .sc-l{font-weight:700;color:var(--muted)}
+  .sc-track{position:relative;height:.5rem;background:var(--surface-2);border-radius:4px}
+  .sc-fill{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:4px}
+  .sc.is-low .sc-fill{background:var(--err)}
+  .sc-tick{position:absolute;top:-.22rem;bottom:-.22rem;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+  .sc-v{font-variant-numeric:tabular-nums;text-align:right;font-weight:700}
+  .flag{display:inline-block;font-size:.68rem;font-weight:700;color:var(--err);background:var(--err-bg);border-radius:.2rem;padding:.05rem .3rem;text-transform:uppercase;letter-spacing:.04em;justify-self:start;white-space:nowrap}
+
+  /* Requests */
+  .req-list{display:grid;gap:1rem}
+  .req{background:var(--surface);border:1px solid var(--rule);border-radius:.6rem;padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.6rem;min-width:0}
+  .req.flash{animation:flash 1.6s ease-out}
+  .req p{margin:0}
+  .req-head{display:flex;gap:.6rem;align-items:flex-start;flex-wrap:wrap}
+  .req-head h2{font-size:1.15rem;margin:0;flex:1 1 12rem;min-width:0}
+  .req-head .code{margin-top:.2rem}
+  .req-sub{font-size:.9rem;color:var(--muted)}
+  .overdue{color:var(--err);font-weight:700}
+  .chips{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:.35rem}
+  .chips li{font-size:.82rem;background:var(--surface-2);border:1px solid var(--rule);border-radius:1rem;padding:.08rem .6rem;max-width:100%}
+  .mins{display:flex;gap:.4rem 1.25rem;margin:0;flex-wrap:wrap}
+  .mins div{display:flex;gap:.35rem;align-items:baseline}
+  .mins dt{color:var(--muted);font-size:.86rem}
+  .mins dd{margin:0;font-weight:700}
+  .req-bar{display:flex;flex-direction:column;gap:.35rem}
+  .req-actions{display:flex;flex-wrap:wrap;gap:.4rem;padding-top:.2rem}
+
+  /* Reviews */
+  .rev-list{list-style:none;margin:0;padding:0;display:grid;gap:.6rem}
+  .rev{display:grid;grid-template-columns:8rem minmax(0,1fr) auto;gap:.5rem 1rem;align-items:start;background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:.8rem 1rem}
+  .rev p{margin:0}
+  .rev-when{display:flex;flex-direction:column}
+  .rev-when strong{font-size:1rem}
+  .rev-notes{margin-top:.3rem !important;font-size:.92rem;white-space:pre-wrap}
+  .rev-actions{display:flex;gap:.4rem;flex-wrap:wrap}
+  .sub-h{font-size:1.1rem;margin:1.5rem 0 .6rem}
+
+  /* Audit log */
+  .log{list-style:none;margin:0;padding:0}
+  .log-row{display:grid;grid-template-columns:10rem 10.5rem minmax(0,1fr);gap:.2rem 1rem;padding:.6rem 0;border-top:1px solid var(--rule);align-items:start}
+  .log-row time{color:var(--muted);font-size:.86rem;font-variant-numeric:tabular-nums}
+  .log-text{margin:0}
+  .log-links{grid-column:3;margin:0;display:flex;gap:.6rem;align-items:center;font-size:.86rem}
+  .log-links:empty{display:none}
+  .actor{font-size:.76rem;font-weight:700;padding:.12rem .45rem;border-radius:.2rem;justify-self:start;line-height:1.3}
+  .actor-you{background:var(--surface-2);color:var(--ink);border:1px solid var(--rule)}
+  .actor-agent{background:var(--synth-soft);color:var(--synth)}
+  .actor-steward{background:var(--info-bg);color:var(--teal)}
+  .actor-system{background:var(--warn-bg);color:var(--warn)}
+  .log.compact .log-row{grid-template-columns:minmax(0,1fr);gap:.15rem}
+  .log.compact .log-links{grid-column:1}
+  .log.compact .row-top{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+
+  /* Dialogs + panel */
+  dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:.6rem;box-shadow:0 12px 40px rgba(0,0,0,.28);
+    width:min(34rem,calc(100vw - 2rem));max-width:calc(100vw - 2rem);max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem)}
+  dialog::backdrop{background:rgba(8,20,22,.5)}
+  #dlg-form{display:flex;flex-direction:column;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem)}
+  .dlg-head{padding:1.1rem 1.25rem .4rem}
+  .dlg-head h2{margin:0;font-size:1.25rem}
+  .dlg-body{padding:.5rem 1.25rem 1.1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.9rem}
+  .dlg-body > p{margin:0}
+  .dlg-foot{padding:.75rem 1.25rem;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap}
+  .dlg-foot .left{margin-right:auto}
+  dialog.panel{margin:0 0 0 auto;width:min(32rem,100vw);max-width:100vw;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0}
+  .panel-inner{display:flex;flex-direction:column;height:100%}
+  .panel-head{padding:.9rem 1.25rem;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .panel-head h2{margin:0;font-size:1.3rem;flex:1 1 auto;min-width:0}
+  .panel-body{overflow-y:auto;padding:.5rem 1.25rem 3rem;flex:1}
+  .psec{padding:1rem 0;border-bottom:1px solid var(--rule)}
+  .psec:last-child{border-bottom:0}
+  .psec h3{font-size:1rem;margin:0 0 .6rem}
+  .psec p{margin:0 0 .5rem}
+  .facts{display:grid;grid-template-columns:7rem minmax(0,1fr);gap:.35rem 1rem;margin:0;font-size:.93rem}
+  .facts dt{color:var(--muted)}
+  .facts dd{margin:0}
+  .btnrow{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.6rem}
+  .lab{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+  .lab th,.lab td{padding:.45rem .5rem;border-bottom:1px solid var(--rule);text-align:left}
+  .lab thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:0}
+  .lab tr.low > *{background:var(--err-bg)}
+  .lab .ok{color:var(--muted)}
+  blockquote{margin:.4rem 0 0;padding:.4rem .75rem;border-left:3px solid var(--teal);background:var(--surface-2);border-radius:0 var(--radius) var(--radius) 0;white-space:pre-wrap}
+  .map{width:100%;border-collapse:collapse;font-size:.88rem}
+  .map th,.map td{border:1px solid var(--rule);padding:.4rem .5rem;text-align:left;vertical-align:top}
+  .map thead th{background:var(--surface-2)}
+  @media (prefers-reduced-motion:no-preference){
+    dialog.panel[open]{animation:slide .22s ease-out}
+    #dlg[open]{animation:pop .16s ease-out}
+  }
+  @keyframes slide{from{transform:translateX(100%)}}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}}
+
+  /* Toasts */
+  .toasts{position:fixed;left:1rem;bottom:1rem;display:flex;flex-direction:column;gap:.5rem;z-index:50;width:min(24rem,calc(100vw - 6.5rem));pointer-events:none}
+  .toast{background:var(--ink);color:var(--bg);padding:.65rem .9rem;border-radius:var(--radius);box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:.92rem;border-left:5px solid var(--s-validation);transition:opacity .25s ease}
+  .toast.warn{border-left-color:var(--warn-line)}
+  .toast.err{border-left-color:var(--err)}
+  .toast.out{opacity:0}
+
+  .foot{border-top:1px solid var(--rule);margin-top:2rem;padding:1.5rem 0 6rem;font-size:.88rem;color:var(--muted)}
+  .foot p{margin:0;max-width:48rem}
+
+  @media (max-width:56rem){
+    .ov-grid{grid-template-columns:minmax(0,1fr)}
+    .log-row{grid-template-columns:auto minmax(0,1fr)}
+    .log-row .log-text,.log-row .log-links{grid-column:1/-1}
+  }
+  @media (max-width:40rem){
+    .wrap{padding:0 1rem}
+    .top-row{padding-top:.8rem}
+    .product{padding-left:.5rem}
+    .viewhead{margin-top:1.25rem}
+    .viewhead h1{font-size:1.4rem}
+    .block{padding:1rem}
+    .strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem}
+    .step{padding:.5rem .6rem;border-top-width:4px}
+    .step-n{font-size:1.4rem}
+    .step-l{font-size:.82rem}
+    .attn{grid-template-columns:minmax(0,1fr)}
+    .attn .btn{justify-self:start}
+    .board{grid-auto-columns:86%}
+    .toolbar .fld{max-width:none;flex-basis:100%}
+    .rtable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .rtable,.rtable tbody,.rtable tr,.rtable td{display:block;width:100%}
+    .rtable tr{border-top:1px solid var(--rule);padding:.6rem 0}
+    .rtable td{border:0;padding:.15rem 0}
+    .rtable td.bar-cell{width:100%;padding-top:.35rem}
+    .rtable td[data-l]::before{content:attr(data-l) ": ";font-weight:700;color:var(--muted);font-size:.82rem}
+    .rev{grid-template-columns:minmax(0,1fr)}
+    .form-grid{grid-template-columns:minmax(0,1fr)}
+    .facts{grid-template-columns:6rem minmax(0,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+    .spin{animation:none;border-right-color:currentColor;opacity:.6}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <a class="mark" href="../" aria-label="SimWard home">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#0B6B66"/>
+        <g fill="#C4BCFF"><circle cx="32" cy="16" r="5.4"/><circle cx="48" cy="16" r="5.4"/><circle cx="16" cy="32" r="5.4"/><circle cx="48" cy="32" r="5.4"/><circle cx="16" cy="48" r="5.4"/><circle cx="32" cy="48" r="5.4"/></g>
+        <g fill="none" stroke="#fff" stroke-width="1.8"><circle cx="16" cy="16" r="4.5"/><circle cx="32" cy="32" r="4.5"/><circle cx="48" cy="48" r="4.5"/></g>
+      </svg>
+      SimWard
+    </a>
+    <span class="product">Pipeline</span>
+    <span class="proto-tag">Prototype</span>
+    <div class="top-actions">
+      <button type="button" class="btn ghost sm" data-act="about">Learn more</button>
+      <a href="../">Home</a>
+    </div>
+  </div>
+  <p class="wrap proto-note">Fictional data. Simulated agents. Changes are saved in this browser only.</p>
+  <nav class="wrap tabs" role="tablist" aria-label="Pipeline views">
+    <button type="button" class="tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="view">Overview</button>
+    <button type="button" class="tab" role="tab" id="tab-pipeline" data-tab="pipeline" aria-controls="view">Pipeline</button>
+    <button type="button" class="tab" role="tab" id="tab-requests" data-tab="requests" aria-controls="view">Requests</button>
+    <button type="button" class="tab" role="tab" id="tab-reviews" data-tab="reviews" aria-controls="view">Reviews</button>
+    <button type="button" class="tab" role="tab" id="tab-audit" data-tab="audit" aria-controls="view">Audit log</button>
+  </nav>
+</header>
+
+<main id="view" class="wrap" role="tabpanel" tabindex="-1" aria-labelledby="tab-overview">
+  <noscript><div class="empty" style="margin-top:2rem"><p>This prototype needs JavaScript to run.</p></div></noscript>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>SimWard pipeline prototype. All data is fictional and the agents are simulated. Not affiliated with any hospital; no real patient or hospital data is used. <a href="../">Back to the SimWard homepage</a></p>
+  </div>
+</footer>
+
+<dialog id="panel" class="panel" aria-labelledby="panel-title">
+  <div class="panel-inner">
+    <div class="panel-head">
+      <h2 id="panel-title">Candidate</h2>
+      <span id="panel-stage" class="badge"></span>
+      <button type="button" class="btn ghost sm" id="panel-close" data-act="panel-close">Close panel</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <form id="dlg-form" novalidate>
+    <div class="dlg-head"><h2 id="dlg-title">Dialog</h2></div>
+    <div class="dlg-body" id="dlg-body"></div>
+    <div class="dlg-foot" id="dlg-foot"></div>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'simward.pipeline.v1';
+  var STAGES = [
+    { id: 'generated', label: 'Generated', hint: 'New candidates from the Generator agent. Next step: validate.' },
+    { id: 'validation', label: 'Validation', hint: 'The Validator agent scores fidelity, privacy and utility.' },
+    { id: 'review', label: 'Steward review', hint: 'A human data steward reviews the report before sign-off.' },
+    { id: 'approved', label: 'Approved', hint: 'Signed off by a steward. Release when the requester is ready.' },
+    { id: 'released', label: 'Released', hint: 'Shared with the requester. Locked: withdraw to reject.' }
+  ];
+  var REJECTED = { id: 'rejected', label: 'Rejected', hint: 'Did not pass. Restore to Generated to try again.' };
+  var ORDER = STAGES.map(function (s) { return s.id; });
+  var ALL_STAGES = ORDER.concat('rejected');
+  var TABS = ['overview', 'pipeline', 'requests', 'reviews', 'audit'];
+  var METHODS = {
+    'Gaussian copula': { fidelity: [79, 90], privacy: [90, 98], utility: [74, 86] },
+    'CTGAN': { fidelity: [86, 95], privacy: [74, 92], utility: [80, 91] },
+    'TVAE': { fidelity: [82, 93], privacy: [83, 95], utility: [78, 89] },
+    'Bayesian network': { fidelity: [80, 90], privacy: [89, 97], utility: [75, 87] }
+  };
+  var METHOD_NAMES = Object.keys(METHODS);
+  var METRICS = [
+    { key: 'fidelity', label: 'Fidelity', short: 'F', min: 'minFidelity' },
+    { key: 'privacy', label: 'Privacy', short: 'P', min: 'minPrivacy' },
+    { key: 'utility', label: 'Utility', short: 'U', min: 'minUtility' }
+  ];
+  var EMPTY_COL = {
+    generated: 'Nothing here. Run the Generator agent from the Requests tab, or choose Add candidate.',
+    validation: 'Nothing to validate. Choose Validate on a Generated candidate.',
+    review: 'No candidates waiting for a steward. Send a validated candidate to review.',
+    approved: 'Nothing approved yet. Sign off a candidate in Steward review.',
+    released: 'Nothing released yet. Release an approved candidate.',
+    rejected: 'No rejected candidates.'
+  };
+
+  var S = null;
+  var ui = { tab: 'overview', fReq: 'all', q: '', showRejected: false, reqStatus: 'open', logQ: '', logLimit: 100, panel: null, drafts: {}, flashStage: null, hlReq: null };
+  var busy = { gen: {}, val: {} };
+  var dlgHandler = null, dlgReturn = null, dlgReturnFk = null, panelReturn = null, saveWarned = false, dragId = null;
+
+  /* ---------- helpers ---------- */
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+  function uid(p) { return p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function rint(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function clampPct(n) { n = Number(n); return isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
+  function nowIso() { return new Date().toISOString(); }
+  function localDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function localDT(d) { return localDate(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function parseDay(s) { var p = String(s).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function toDate(s) {
+    if (!s) return null;
+    var d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? parseDay(s) : new Date(s);
+    return isNaN(d) ? null : d;
+  }
+  var fmtD = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  var fmtDT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  var fmtWk = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  var fmtT = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+  var fmtN = new Intl.NumberFormat('en-GB');
+  function showDate(s) { var d = toDate(s); return d ? fmtD.format(d) : 'No date'; }
+  function showDT(s) { var d = toDate(s); return d ? fmtDT.format(d) : 'No date'; }
+  function fmtRows(n) { return fmtN.format(Number(n) || 0); }
+  function daysFromToday(dayStr) {
+    var d = toDate(dayStr); if (!d) return 0;
+    var t = new Date(); t.setHours(0, 0, 0, 0); d.setHours(0, 0, 0, 0);
+    return Math.round((d - t) / 86400000);
+  }
+  function dueText(r) {
+    var n = daysFromToday(r.due);
+    if (n > 1) return 'in ' + n + ' days';
+    if (n === 1) return 'tomorrow';
+    if (n === 0) return 'today';
+    return (-n) + (n === -1 ? ' day' : ' days') + ' overdue';
+  }
+  function reduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+
+  function req(id) { return S.requests.find(function (r) { return r.id === id; }); }
+  function cand(id) { return S.candidates.find(function (c) { return c.id === id; }); }
+  function candsOf(rid) { return S.candidates.filter(function (c) { return c.requestId === rid; }); }
+  function stageLabel(id) { if (id === 'rejected') return 'Rejected'; var s = STAGES.find(function (x) { return x.id === id; }); return s ? s.label : id; }
+  function lowMetrics(c) {
+    var r = req(c.requestId);
+    if (!c.scores || !r) return [];
+    return METRICS.filter(function (m) { return Number(c.scores[m.key]) < Number(r[m.min]); });
+  }
+  function privacyFails(c) { return lowMetrics(c).some(function (m) { return m.key === 'privacy'; }); }
+  function lowText(c) {
+    var r = req(c.requestId);
+    return lowMetrics(c).map(function (m) { return m.label.toLowerCase() + ' (' + c.scores[m.key] + ' < ' + r[m.min] + ')'; }).join(', ');
+  }
+  function countStages(list) {
+    var o = {}; ALL_STAGES.forEach(function (s) { o[s] = 0; });
+    list.forEach(function (c) { o[c.stage] = (o[c.stage] || 0) + 1; });
+    return o;
+  }
+  function addLog(actor, text, cid, rid) { S.log.push({ id: uid('l'), ts: nowIso(), actor: actor, text: text, cid: cid || null, rid: rid || null }); }
+  function stewardNames() {
+    var set = {};
+    S.candidates.forEach(function (c) { if (c.review && c.review.steward) set[c.review.steward] = 1; if (c.decision && c.decision.by) set[c.decision.by] = 1; });
+    ['M. Okafor', 'J. Tremblay'].forEach(function (n) { set[n] = 1; });
+    return Object.keys(set).sort();
+  }
+
+  /* ---------- seed data (dates relative to today) ---------- */
+  function seed() {
+    function at(days, h, m) { var d = new Date(); d.setDate(d.getDate() + days); d.setHours(h, m || 0, 0, 0); return d; }
+    function iso(days, h, m) { return at(days, h, m).toISOString(); }
+    function ldt(days, h, m) { return localDT(at(days, h, m)); }
+    function day(days) { return localDate(at(days, 12)); }
+    function sc(f, p, u) { return { fidelity: f, privacy: p, utility: u }; }
+    function C(id, rid, name, method, rows, gen, stage, scores, extra) {
+      var c = { id: id, requestId: rid, name: name, method: method, rows: rows, generated: gen, stage: stage, scores: scores, review: null, decision: null, rejectReason: null };
+      return Object.assign(c, extra || {});
+    }
+    var requests = [
+      { id: 'r-ed', code: 'ED', title: 'Emergency wait time by arrival hour', requester: 'Patient flow analyst',
+        question: 'How does emergency department wait time vary by arrival hour, day of week and triage level?',
+        variables: ['arrival hour', 'day of week', 'triage level', 'age band', 'wait minutes', 'disposition'],
+        minFidelity: 85, minPrivacy: 90, minUtility: 80, due: day(18), status: 'open', created: iso(-30, 9, 0), seq: 3 },
+      { id: 'r-los', code: 'LOS', title: 'Inpatient length-of-stay drivers', requester: 'Capacity planning lead',
+        question: 'Which admission and ward factors are most associated with longer inpatient stays?',
+        variables: ['admission type', 'diagnosis group', 'age band', 'ward type', 'discharge weekday', 'length of stay'],
+        minFidelity: 85, minPrivacy: 90, minUtility: 80, due: day(32), status: 'open', created: iso(-20, 10, 0), seq: 3 },
+      { id: 'r-ns', code: 'NS', title: 'Outpatient no-show model sandbox', requester: 'External vendor pilot',
+        question: 'Can a vendor prototype a no-show prediction model without touching real appointment records?',
+        variables: ['clinic type', 'booking lead time', 'age band', 'distance band', 'prior no-shows', 'attended'],
+        minFidelity: 80, minPrivacy: 95, minUtility: 75, due: day(46), status: 'open', created: iso(-16, 9, 30), seq: 2 },
+      { id: 'r-stf', code: 'STF', title: 'Nurse staffing versus census', requester: 'Nursing workforce planning',
+        question: 'How closely does nurse staffing on each shift track the daily patient census across wards?',
+        variables: ['date', 'shift', 'ward type', 'census', 'nurses on shift', 'overtime hours'],
+        minFidelity: 85, minPrivacy: 85, minUtility: 80, due: day(60), status: 'open', created: iso(-2, 15, 0), seq: 0 }
+    ];
+    var candidates = [
+      C('c-ed1', 'r-ed', 'SYN-ED-01', 'Gaussian copula', 48200, iso(-28, 11, 0), 'released', sc(88, 94, 83), {
+        review: { datetime: ldt(-23, 14, 0), steward: 'M. Okafor', notes: 'Arrival-hour pattern matches the validation summary. No near-copies found.' },
+        decision: { by: 'M. Okafor', at: iso(-22, 16, 10), note: 'Meets all minimums.' } }),
+      C('c-ed2', 'r-ed', 'SYN-ED-02', 'CTGAN', 61500, iso(-26, 10, 20), 'rejected', sc(91, 78, 86), {
+        rejectReason: 'Privacy below 90: near-copies of source records found.' }),
+      C('c-ed3', 'r-ed', 'SYN-ED-03', 'TVAE', 35800, iso(-3, 9, 40), 'generated', null),
+      C('c-los1', 'r-los', 'SYN-LOS-01', 'Bayesian network', 52000, iso(-14, 13, 0), 'review', sc(87, 93, 82), {
+        review: { datetime: ldt(2, 10, 0), steward: 'J. Tremblay', notes: 'Walk through length of stay by ward type and admission type.' } }),
+      C('c-los2', 'r-los', 'SYN-LOS-02', 'CTGAN', 44700, iso(-4, 11, 15), 'validation', null),
+      C('c-los3', 'r-los', 'SYN-LOS-03', 'TVAE', 29300, iso(-1, 16, 5), 'generated', null),
+      C('c-ns1', 'r-ns', 'SYN-NS-01', 'Gaussian copula', 72400, iso(-12, 10, 0), 'review', sc(79, 97, 74), {
+        review: { datetime: ldt(5, 14, 0), steward: 'M. Okafor', notes: 'Fidelity and utility are just under the minimums. Decide whether a vendor sandbox justifies them.' } }),
+      C('c-ns2', 'r-ns', 'SYN-NS-02', 'Bayesian network', 38900, iso(-10, 14, 30), 'approved', sc(84, 96, 78), {
+        review: { datetime: ldt(-8, 11, 0), steward: 'J. Tremblay', notes: 'Checked no-show rate by clinic type.' },
+        decision: { by: 'J. Tremblay', at: iso(-7, 15, 0), note: 'Vendor sandbox only' } })
+    ];
+    function L(days, h, m, actor, text, cid, rid) { return { id: uid('l'), ts: iso(days, h, m), actor: actor, text: text, cid: cid || null, rid: rid || null }; }
+    var G = 'Generator agent', V = 'Validator agent', Y = 'You', MO = 'Steward: M. Okafor', JT = 'Steward: J. Tremblay';
+    var log = [
+      L(-30, 9, 0, Y, 'Created request ED: Emergency wait time by arrival hour.', null, 'r-ed'),
+      L(-28, 11, 0, G, 'Generated SYN-ED-01 (Gaussian copula, 48,200 rows) inside the secure environment.', 'c-ed1', 'r-ed'),
+      L(-28, 11, 2, Y, 'Moved SYN-ED-01 from Generated to Validation.', 'c-ed1', 'r-ed'),
+      L(-28, 11, 4, V, 'Scored SYN-ED-01: fidelity 88, privacy 94, utility 83. All minimums met.', 'c-ed1', 'r-ed'),
+      L(-27, 9, 15, Y, 'Moved SYN-ED-01 from Validation to Steward review.', 'c-ed1', 'r-ed'),
+      L(-27, 9, 20, Y, 'Booked steward review for SYN-ED-01 with M. Okafor.', 'c-ed1', 'r-ed'),
+      L(-26, 10, 20, G, 'Generated SYN-ED-02 (CTGAN, 61,500 rows) inside the secure environment.', 'c-ed2', 'r-ed'),
+      L(-26, 10, 22, Y, 'Moved SYN-ED-02 from Generated to Validation.', 'c-ed2', 'r-ed'),
+      L(-26, 10, 24, V, 'Scored SYN-ED-02: fidelity 91, privacy 78, utility 86. Below minimum: privacy (78 < 90).', 'c-ed2', 'r-ed'),
+      L(-25, 16, 0, JT, 'Rejected SYN-ED-02 from Validation: Privacy below 90: near-copies of source records found.', 'c-ed2', 'r-ed'),
+      L(-23, 14, 50, MO, 'Held steward review for SYN-ED-01.', 'c-ed1', 'r-ed'),
+      L(-22, 16, 10, MO, 'Signed off SYN-ED-01. Note: Meets all minimums.', 'c-ed1', 'r-ed'),
+      L(-21, 9, 0, Y, 'Released SYN-ED-01 to Patient flow analyst.', 'c-ed1', 'r-ed'),
+      L(-20, 10, 0, Y, 'Created request LOS: Inpatient length-of-stay drivers.', null, 'r-los'),
+      L(-16, 9, 30, Y, 'Created request NS: Outpatient no-show model sandbox.', null, 'r-ns'),
+      L(-14, 13, 0, G, 'Generated SYN-LOS-01 (Bayesian network, 52,000 rows) inside the secure environment.', 'c-los1', 'r-los'),
+      L(-14, 13, 2, Y, 'Moved SYN-LOS-01 from Generated to Validation.', 'c-los1', 'r-los'),
+      L(-14, 13, 4, V, 'Scored SYN-LOS-01: fidelity 87, privacy 93, utility 82. All minimums met.', 'c-los1', 'r-los'),
+      L(-12, 10, 0, G, 'Generated SYN-NS-01 (Gaussian copula, 72,400 rows) inside the secure environment.', 'c-ns1', 'r-ns'),
+      L(-12, 10, 3, Y, 'Moved SYN-NS-01 from Generated to Validation.', 'c-ns1', 'r-ns'),
+      L(-12, 10, 5, V, 'Scored SYN-NS-01: fidelity 79, privacy 97, utility 74. Below minimum: fidelity (79 < 80), utility (74 < 75).', 'c-ns1', 'r-ns'),
+      L(-12, 15, 0, Y, 'Moved SYN-LOS-01 from Validation to Steward review.', 'c-los1', 'r-los'),
+      L(-10, 14, 30, G, 'Generated SYN-NS-02 (Bayesian network, 38,900 rows) inside the secure environment.', 'c-ns2', 'r-ns'),
+      L(-10, 14, 32, Y, 'Moved SYN-NS-02 from Generated to Validation.', 'c-ns2', 'r-ns'),
+      L(-10, 14, 34, V, 'Scored SYN-NS-02: fidelity 84, privacy 96, utility 78. All minimums met.', 'c-ns2', 'r-ns'),
+      L(-9, 9, 0, Y, 'Moved SYN-NS-02 from Validation to Steward review.', 'c-ns2', 'r-ns'),
+      L(-9, 9, 5, Y, 'Booked steward review for SYN-NS-02 with J. Tremblay.', 'c-ns2', 'r-ns'),
+      L(-8, 11, 45, JT, 'Held steward review for SYN-NS-02.', 'c-ns2', 'r-ns'),
+      L(-7, 15, 0, JT, 'Signed off SYN-NS-02. Note: Vendor sandbox only', 'c-ns2', 'r-ns'),
+      L(-6, 11, 0, Y, 'Moved SYN-NS-01 from Validation to Steward review.', 'c-ns1', 'r-ns'),
+      L(-4, 11, 15, G, 'Generated SYN-LOS-02 (CTGAN, 44,700 rows) inside the secure environment.', 'c-los2', 'r-los'),
+      L(-4, 11, 30, Y, 'Moved SYN-LOS-02 from Generated to Validation.', 'c-los2', 'r-los'),
+      L(-3, 9, 40, G, 'Generated SYN-ED-03 (TVAE, 35,800 rows) inside the secure environment.', 'c-ed3', 'r-ed'),
+      L(-2, 15, 0, Y, 'Created request STF: Nurse staffing versus census.', null, 'r-stf'),
+      L(-2, 16, 0, Y, 'Booked steward review for SYN-LOS-01 with J. Tremblay.', 'c-los1', 'r-los'),
+      L(-1, 16, 5, G, 'Generated SYN-LOS-03 (TVAE, 29,300 rows) inside the secure environment.', 'c-los3', 'r-los'),
+      L(-1, 16, 30, Y, 'Booked steward review for SYN-NS-01 with M. Okafor.', 'c-ns1', 'r-ns'),
+      { id: uid('l'), ts: nowIso(), actor: 'System', text: 'Loaded the fictional demo data.', cid: null, rid: null }
+    ];
+    return { v: 1, requests: requests, candidates: candidates, log: log };
+  }
+
+  /* ---------- persistence ---------- */
+  function isValid(d) {
+    if (!d || d.v !== 1 || !Array.isArray(d.requests) || !Array.isArray(d.candidates) || !Array.isArray(d.log)) return false;
+    var okR = d.requests.every(function (r) { return r && typeof r.id === 'string' && typeof r.code === 'string' && typeof r.title === 'string' && Array.isArray(r.variables); });
+    var okC = d.candidates.every(function (c) { return c && typeof c.id === 'string' && typeof c.name === 'string' && ALL_STAGES.indexOf(c.stage) !== -1; });
+    var okL = d.log.every(function (e) { return e && typeof e.ts === 'string' && typeof e.text === 'string'; });
+    return okR && okC && okL;
+  }
+  function normalise() {
+    S.candidates = S.candidates.filter(function (c) { return !!req(c.requestId); });
+    S.requests.forEach(function (r) {
+      var max = 0;
+      candsOf(r.id).forEach(function (c) { var m = /-(\d+)$/.exec(c.name); if (m) max = Math.max(max, Number(m[1])); });
+      r.seq = Math.max(Number(r.seq) || 0, max);
+    });
+  }
+  function load() {
+    var raw = null, data = null, corrupt = false;
+    try { raw = localStorage.getItem(KEY); } catch (e) { raw = null; }
+    if (raw) {
+      try { data = JSON.parse(raw); if (!isValid(data)) { data = null; corrupt = true; } }
+      catch (e) { data = null; corrupt = true; }
+    }
+    S = data || seed();
+    normalise();
+    if (!data) save();
+    return corrupt;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (e) {
+      if (!saveWarned) { saveWarned = true; toast('This browser blocked saving, so changes last only until you close the tab.', 'warn'); }
+    }
+  }
+  function commit() { save(); render(); }
+
+  /* ---------- toasts ---------- */
+  function toastHost() {
+    var d = $('#dlg'), p = $('#panel');
+    if (d.open) return d;
+    if (p.open) return p;
+    return document.body;
+  }
+  function toast(msg, kind) {
+    var box = $('#toasts'), host = toastHost();
+    if (box.parentNode !== host) host.appendChild(box);
+    var el = document.createElement('div');
+    el.className = 'toast ' + (kind || 'ok');
+    el.textContent = msg;
+    box.appendChild(el);
+    while (box.children.length > 3) box.removeChild(box.firstChild);
+    setTimeout(function () { el.classList.add('out'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 300); }, 4200);
+  }
+  function rehomeToasts() { var box = $('#toasts'), host = toastHost(); if (box.parentNode !== host) host.appendChild(box); }
+
+  /* ---------- rendering ---------- */
+  function render() {
+    var active = document.activeElement;
+    var fk = active && active.dataset ? active.dataset.fk : null;
+    var scope = active && active.closest ? active.closest('dialog') : null;
+    if (ui.fReq !== 'all' && !req(ui.fReq)) ui.fReq = 'all';
+    $$('.tab').forEach(function (t) {
+      var on = t.dataset.tab === ui.tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+    });
+    var view = $('#view');
+    view.setAttribute('aria-labelledby', 'tab-' + ui.tab);
+    view.innerHTML = VIEWS[ui.tab]();
+    var n = attentionItems().length, t = $('#tab-overview');
+    t.innerHTML = 'Overview' + (n ? '<span class="n" aria-label="' + n + ' items need attention">' + n + '</span>' : '');
+    if (ui.panel) renderPanel();
+    if (fk) {
+      var root = scope && scope.open ? scope : document;
+      var el = root.querySelector('[data-fk="' + CSS.escape(fk) + '"]');
+      if (el && el.disabled) el = root.querySelector('[data-fk="open:' + CSS.escape(fk.split(':').pop()) + '"]') || (scope && scope.open ? $('#panel-close') : null);
+      if (el) el.focus({ preventScroll: true });
+    }
+  }
+
+  function stageBar(list) {
+    if (!list.length) return '<p class="sbar-empty">No candidates yet</p>';
+    var cnt = countStages(list);
+    var parts = ALL_STAGES.filter(function (s) { return cnt[s]; });
+    var label = parts.map(function (s) { return stageLabel(s) + ' ' + cnt[s]; }).join(', ');
+    return '<div class="sbar" role="img" aria-label="Candidates by stage: ' + esc(label) + '">' + parts.map(function (s) {
+      return '<span class="seg st-' + s + '" style="flex-grow:' + cnt[s] + '" title="' + esc(stageLabel(s)) + ': ' + cnt[s] + '"></span>';
+    }).join('') + '</div>';
+  }
+  function countsText(list) {
+    if (!list.length) return 'No candidates yet. Run the Generator agent to create one.';
+    var cnt = countStages(list);
+    return list.length + (list.length === 1 ? ' candidate: ' : ' candidates: ') + ALL_STAGES.filter(function (s) { return cnt[s]; }).map(function (s) { return cnt[s] + ' ' + stageLabel(s).toLowerCase(); }).join(', ');
+  }
+  function legendHTML() {
+    return '<ul class="legend" aria-label="Stage colours">' + ALL_STAGES.map(function (s) {
+      return '<li><span class="sw st-' + s + '" aria-hidden="true"></span>' + esc(stageLabel(s)) + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  /* Overview */
+  function attentionItems() {
+    var items = [];
+    S.candidates.forEach(function (c) {
+      var r = req(c.requestId); if (!r || c.stage === 'rejected' || c.stage === 'released') return;
+      if (c.scores && privacyFails(c)) {
+        items.push({ sev: 0, tag: 'Blocked', cls: 'err', name: c.name, text: 'Privacy ' + c.scores.privacy + ' is below the minimum of ' + r.minPrivacy + '. Sign-off is blocked.', act: 'reject-prefill', label: 'Reject', id: c.id });
+      } else if (c.scores && lowMetrics(c).length && (c.stage === 'validation' || c.stage === 'review')) {
+        items.push({ sev: 1, tag: 'Below min', cls: 'warn', name: c.name, text: 'Below minimum: ' + lowText(c) + '. Sign-off needs a written note.', act: 'open', label: 'Open report', id: c.id });
+      }
+      if (c.stage === 'validation' && !c.scores) {
+        items.push({ sev: 1, tag: 'To do', cls: 'info', name: c.name, text: 'In Validation, but the Validator agent has not run.', act: 'validate-run', label: busy.val[c.id] ? 'Running…' : 'Run Validator', id: c.id, busy: !!busy.val[c.id] });
+      }
+      if (c.stage === 'review' && !c.review) {
+        items.push({ sev: 1, tag: 'To do', cls: 'info', name: c.name, text: 'In Steward review with no review booked.', act: 'book', label: 'Book review', id: c.id });
+      }
+      if (c.stage === 'approved') {
+        items.push({ sev: 2, tag: 'Ready', cls: 'info', name: c.name, text: 'Approved but not yet released.', act: 'release', label: 'Release', id: c.id });
+      }
+    });
+    S.requests.forEach(function (r) {
+      if (r.status !== 'open') return;
+      var cs = candsOf(r.id);
+      if (!cs.length) items.push({ sev: 1, tag: 'Empty', cls: 'warn', name: r.code, text: r.title + ' is open with no candidates.', act: 'generate', label: busy.gen[r.id] ? 'Generating…' : 'Run Generator agent', rid: r.id, busy: !!busy.gen[r.id] });
+      if (daysFromToday(r.due) < 0 && !cs.some(function (c) { return c.stage === 'released'; })) {
+        items.push({ sev: 0, tag: 'Overdue', cls: 'err', name: r.code, text: 'Due ' + showDate(r.due) + ' (' + dueText(r) + ') with nothing released.', act: 'view-request', label: 'View request', rid: r.id });
+      }
+    });
+    return items.sort(function (a, b) { return a.sev - b.sev; });
+  }
+  function viewOverview() {
+    var cnt = countStages(S.candidates);
+    var strip = STAGES.map(function (s) {
+      return '<li><button type="button" class="step st-' + s.id + '" data-act="goto-stage" data-stage="' + s.id + '" data-fk="step:' + s.id + '">' +
+        '<span class="step-n">' + cnt[s.id] + '</span><span class="step-l">' + esc(s.label) + '</span><span class="sr">: open this stage in the pipeline</span></button></li>';
+    }).join('');
+    var rejNote = cnt.rejected ? '<p class="strip-note small muted">' + cnt.rejected + ' rejected ' + (cnt.rejected === 1 ? 'candidate is' : 'candidates are') + ' not shown in the strip. <button type="button" class="linkbtn" data-act="show-rejected" data-fk="show-rej">Show rejected in the pipeline</button></p>' : '';
+
+    var items = attentionItems();
+    var attn = items.length ? '<ul class="attn-list">' + items.map(function (it, i) {
+      var target = it.id ? ' data-id="' + esc(it.id) + '"' : ' data-rid="' + esc(it.rid) + '"';
+      return '<li class="attn"><span class="tag ' + it.cls + '">' + esc(it.tag) + '</span><p><strong>' + esc(it.name) + '</strong> ' + esc(it.text) + '</p>' +
+        '<button type="button" class="btn sm' + (it.cls === 'err' && it.act === 'reject-prefill' ? ' danger' : '') + '" data-act="' + it.act + '"' + target + ' data-fk="attn:' + it.act + ':' + esc(it.id || it.rid) + '"' + (it.busy ? ' disabled aria-busy="true"' : '') + '>' + esc(it.label) + '</button></li>';
+    }).join('') + '</ul>' : '<div class="empty"><p>All clear. Nothing needs action right now.</p></div>';
+
+    var now = new Date();
+    var upcoming = S.candidates.filter(function (c) { return c.review && c.stage !== 'rejected' && c.stage !== 'released' && toDate(c.review.datetime) >= now; })
+      .sort(function (a, b) { return toDate(a.review.datetime) - toDate(b.review.datetime); });
+    var up = upcoming.length ? '<ul class="mini-rev">' + upcoming.slice(0, 5).map(function (c) {
+      var d = toDate(c.review.datetime), r = req(c.requestId);
+      return '<li><div class="when"><strong>' + esc(fmtWk.format(d)) + '</strong><span class="muted">' + esc(fmtT.format(d)) + '</span></div><div><p><button type="button" class="linkbtn strong" data-act="open" data-id="' + esc(c.id) + '" data-fk="up:' + esc(c.id) + '">' + esc(c.name) + '</button> with ' + esc(c.review.steward) + '</p><p class="small muted clamp2">' + esc(r.title) + '</p></div></li>';
+    }).join('') + '</ul>' + (upcoming.length > 5 ? '<p class="small"><button type="button" class="linkbtn" data-tab="reviews">See all ' + upcoming.length + ' upcoming reviews</button></p>' : '')
+      : '<div class="empty"><p>No reviews booked.</p><button type="button" class="btn sm" data-act="schedule" data-fk="ov-schedule">Schedule a review</button></div>';
+
+    var open = S.requests.filter(function (r) { return r.status === 'open'; }).sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); });
+    var table = open.length ? legendHTML() + '<table class="rtable"><caption class="sr">Open requests with candidates by stage</caption><thead><tr><th scope="col">Request</th><th scope="col">Due</th><th scope="col">Candidates</th><th scope="col">By stage</th></tr></thead><tbody>' +
+      open.map(function (r) {
+        var cs = candsOf(r.id), n = daysFromToday(r.due);
+        return '<tr><td><span class="code">' + esc(r.code) + '</span> <button type="button" class="linkbtn strong" data-act="view-in-pipeline" data-rid="' + esc(r.id) + '" data-fk="ovr:' + esc(r.id) + '">' + esc(r.title) + '</button></td>' +
+          '<td data-l="Due">' + esc(showDate(r.due)) + ' <span class="' + (n < 0 ? 'overdue' : 'muted') + ' small">(' + esc(dueText(r)) + ')</span></td>' +
+          '<td data-l="Candidates" class="num">' + cs.length + '</td><td class="bar-cell">' + stageBar(cs) + '</td></tr>';
+      }).join('') + '</tbody></table>'
+      : '<div class="empty"><p>No open requests. Create one to start generating candidates.</p><button type="button" class="btn sm" data-act="new-req" data-fk="ov-new-req">Create a request</button></div>';
+
+    return '<div class="viewhead"><h1>Overview</h1><p>Where every synthetic dataset candidate stands, and what needs doing next.</p></div>' +
+      '<section class="block" aria-labelledby="h-strip"><h2 id="h-strip">Pipeline stages</h2><ol class="strip">' + strip + '</ol>' + rejNote + '</section>' +
+      '<div class="ov-grid"><section class="block" aria-labelledby="h-attn"><h2 id="h-attn">Needs attention <span class="pill">' + items.length + '</span></h2>' + attn + '</section>' +
+      '<section class="block" aria-labelledby="h-up"><h2 id="h-up">Upcoming steward reviews <span class="pill">' + upcoming.length + '</span></h2>' + up + '</section></div>' +
+      '<section class="block" aria-labelledby="h-open"><h2 id="h-open">Open requests <span class="pill">' + open.length + '</span></h2>' + table + '</section>';
+  }
+
+  /* Pipeline */
+  function filtered() {
+    var q = ui.q.trim().toLowerCase();
+    return S.candidates.filter(function (c) {
+      if (ui.fReq !== 'all' && c.requestId !== ui.fReq) return false;
+      if (!q) return true;
+      var r = req(c.requestId) || {};
+      return [c.name, c.method, r.title, r.code, r.requester].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function scoreStrip(c, r) {
+    return '<div class="scores">' + METRICS.map(function (m) {
+      var v = Number(c.scores[m.key]), min = Number(r[m.min]), low = v < min;
+      return '<div class="sc' + (low ? ' is-low' : '') + '" title="' + m.label + ' ' + v + ', minimum ' + min + '">' +
+        '<span class="sc-l" aria-hidden="true">' + m.short + '</span>' +
+        '<span class="sc-track" aria-hidden="true"><span class="sc-fill" style="width:' + clampPct(v) + '%"></span><span class="sc-tick" style="left:' + clampPct(min) + '%"></span></span>' +
+        '<span class="sc-v"><span class="sr">' + m.label + ' </span>' + esc(v) + '<span class="sr">, minimum ' + esc(min) + (low ? ', low' : '') + '</span></span>' +
+        (low ? '<span class="flag" aria-hidden="true">Low</span>' : '<span></span>') + '</div>';
+    }).join('') + '</div>';
+  }
+  function nextAction(c) {
+    switch (c.stage) {
+      case 'generated': return { act: 'next', label: 'Validate' };
+      case 'validation': return c.scores ? { act: 'next', label: 'Send to review' } : { act: 'validate-run', label: busy.val[c.id] ? 'Running…' : 'Run Validator', busy: !!busy.val[c.id] };
+      case 'review': return { act: 'next', label: 'Sign off' };
+      case 'approved': return { act: 'next', label: 'Release' };
+      case 'released': return { act: 'withdraw', label: 'Withdraw', danger: true };
+      default: return { act: 'restore', label: 'Restore' };
+    }
+  }
+  function moveButtons(c, prefix) {
+    var i = ORDER.indexOf(c.stage), id = esc(c.id), html = '';
+    if (i > 0 && c.stage !== 'released') {
+      html += '<button type="button" class="btn ghost sm" data-act="back" data-id="' + id + '" data-fk="' + prefix + 'back:' + id + '" aria-label="Move ' + esc(c.name) + ' back to ' + esc(stageLabel(ORDER[i - 1])) + '">&larr; Back</button>';
+    }
+    var n = nextAction(c);
+    html += '<button type="button" class="btn sm' + (n.danger ? ' ghost danger-txt' : '') + '" data-act="' + n.act + '" data-id="' + id + '" data-fk="' + prefix + 'next:' + id + '"' +
+      (n.busy ? ' disabled aria-busy="true"' : '') + ' aria-label="' + esc(n.label + ': ' + c.name) + '">' + (n.busy ? '<span class="spin" aria-hidden="true"></span>' : '') + esc(n.label) + '</button>';
+    return html;
+  }
+  function cardHTML(c) {
+    var r = req(c.requestId) || {}, id = esc(c.id), scores, review = '';
+    if (busy.val[c.id]) scores = '<p class="scores-na"><span class="spin" aria-hidden="true"></span> Validator agent running…</p>';
+    else if (c.scores) scores = scoreStrip(c, r);
+    else scores = '<p class="scores-na">Not yet scored</p>';
+    if (c.stage === 'rejected') review = '<p class="reason clamp2" title="' + esc(c.rejectReason) + '"><strong>Reason:</strong> ' + esc(c.rejectReason || 'No reason recorded') + '</p>';
+    else if (c.review) review = '<p class="rev-line">Review ' + esc(showDT(c.review.datetime)) + ' with ' + esc(c.review.steward) + '</p>';
+    else if (c.stage !== 'released' && c.stage !== 'approved') review = '<p class="rev-line"><button type="button" class="linkbtn" data-act="book" data-id="' + id + '" data-fk="book:' + id + '">Book a steward review</button></p>';
+    return '<article class="card' + (c.scores && privacyFails(c) && c.stage !== 'rejected' ? ' card-err' : '') + '" draggable="true" data-cid="' + id + '" aria-labelledby="n-' + id + '">' +
+      '<div class="card-top"><button type="button" class="card-name" id="n-' + id + '" data-act="open" data-id="' + id + '" data-fk="open:' + id + '">' + esc(c.name) + '</button>' + (c.stage === 'released' ? '<span class="lock">Locked</span>' : '') + '</div>' +
+      '<p class="card-req clamp2" title="' + esc(r.title) + '">' + esc(r.title) + '</p>' +
+      '<p class="card-meta">' + esc(c.method) + ' · ' + fmtRows(c.rows) + ' rows</p>' + scores + review +
+      '<div class="card-actions">' + moveButtons(c, '') + '</div></article>';
+  }
+  function boardHTML() {
+    var list = filtered();
+    var cols = STAGES.concat(ui.showRejected ? [REJECTED] : []);
+    var filtersOn = ui.fReq !== 'all' || ui.q.trim() !== '';
+    var html = filtersOn ? '<p class="filter-note">Showing ' + list.length + ' of ' + S.candidates.length + ' candidates. <button type="button" class="linkbtn" data-act="clear-filters">Clear filters</button></p>' : '';
+    if (!S.candidates.length) html += '<div class="notice info" style="margin-bottom:1rem"><p>No candidates yet. Open the Requests tab and choose <strong>Run Generator agent</strong>, or choose <strong>Add candidate</strong>.</p></div>';
+    html += '<div class="board" id="board">' + cols.map(function (s) {
+      var items = list.filter(function (c) { return c.stage === s.id; }).sort(function (a, b) { return a.name.localeCompare(b.name, 'en', { numeric: true }); });
+      var empty = items.length ? '' : '<p class="empty-col">' + esc(filtersOn ? 'No candidates match your filters in this stage.' : EMPTY_COL[s.id]) + '</p>';
+      return '<section class="col st-' + s.id + (ui.flashStage === s.id ? ' flash' : '') + '" data-drop="' + s.id + '" id="col-' + s.id + '" aria-labelledby="h-' + s.id + '">' +
+        '<div class="col-head"><h2 id="h-' + s.id + '" tabindex="-1">' + esc(s.label) + '</h2><span class="count" aria-label="' + items.length + ' candidates">' + items.length + '</span></div>' +
+        '<p class="col-hint">' + esc(s.hint) + '</p><div class="col-body">' + items.map(cardHTML).join('') + empty + '</div></section>';
+    }).join('') + '</div>';
+    return html;
+  }
+  function viewPipeline() {
+    var opts = S.requests.map(function (r) { return '<option value="' + esc(r.id) + '"' + (ui.fReq === r.id ? ' selected' : '') + '>' + esc(r.code + ': ' + r.title) + '</option>'; }).join('');
+    var rejN = S.candidates.filter(function (c) { return c.stage === 'rejected'; }).length;
+    return '<div class="viewhead"><h1>Pipeline</h1><p>Move each candidate one stage at a time. Drag cards on desktop, or use the buttons on any device.</p></div>' +
+      '<div class="toolbar">' +
+      '<div class="fld"><label for="f-req">Request</label><select id="f-req" data-fk="f-req"><option value="all">All requests</option>' + opts + '</select></div>' +
+      '<div class="fld grow"><label for="f-q">Search</label><input type="search" id="f-q" value="' + esc(ui.q) + '" placeholder="Name, method or request" autocomplete="off"></div>' +
+      '<label class="chk"><input type="checkbox" id="f-rej" data-fk="f-rej"' + (ui.showRejected ? ' checked' : '') + '> Show rejected (' + rejN + ')</label>' +
+      '<button type="button" class="btn" data-act="add-cand" data-fk="add-cand">Add candidate</button></div>' +
+      '<div id="board-wrap">' + boardHTML() + '</div>';
+  }
+
+  /* Requests */
+  function reqCard(r) {
+    var cs = candsOf(r.id), n = daysFromToday(r.due), id = esc(r.id);
+    var overdue = r.status === 'open' && n < 0 && !cs.some(function (c) { return c.stage === 'released'; });
+    var gen = busy.gen[r.id];
+    return '<article class="req' + (ui.hlReq === r.id ? ' flash' : '') + '" id="req-' + id + '" aria-labelledby="rh-' + id + '">' +
+      '<div class="req-head"><span class="code">' + esc(r.code) + '</span><h2 id="rh-' + id + '">' + esc(r.title) + '</h2><span class="badge ' + (r.status === 'open' ? 'open' : 'closed') + '">' + (r.status === 'open' ? 'Open' : 'Closed') + '</span></div>' +
+      '<p class="req-sub">' + esc(r.requester) + ' · Due ' + esc(showDate(r.due)) + ' <span class="' + (overdue ? 'overdue' : '') + '">(' + esc(dueText(r)) + (overdue ? ', nothing released' : '') + ')</span></p>' +
+      '<p>' + esc(r.question) + '</p>' +
+      '<ul class="chips" aria-label="Variables needed">' + r.variables.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ul>' +
+      '<dl class="mins">' + METRICS.map(function (m) { return '<div><dt>Min ' + m.label.toLowerCase() + '</dt><dd>&ge; ' + esc(r[m.min]) + '</dd></div>'; }).join('') + '</dl>' +
+      '<div class="req-bar">' + stageBar(cs) + (cs.length ? '<p class="small muted">' + esc(countsText(cs)) + '</p>' : '') + '</div>' +
+      '<div class="req-actions">' +
+      (r.status === 'open' ? '<button type="button" class="btn sm" data-act="generate" data-rid="' + id + '" data-fk="gen:' + id + '"' + (gen ? ' disabled aria-busy="true"' : '') + '>' + (gen ? '<span class="spin" aria-hidden="true"></span>Generating…' : 'Run Generator agent') + '</button>' : '') +
+      '<button type="button" class="btn ghost sm" data-act="view-in-pipeline" data-rid="' + id + '" data-fk="vip:' + id + '">View in pipeline</button>' +
+      '<button type="button" class="btn ghost sm" data-act="edit-req" data-rid="' + id + '" data-fk="edit:' + id + '">Edit</button>' +
+      '<button type="button" class="btn ghost sm" data-act="toggle-req" data-rid="' + id + '" data-fk="tog:' + id + '">' + (r.status === 'open' ? 'Close' : 'Reopen') + '</button>' +
+      '<button type="button" class="btn ghost sm danger-txt" data-act="del-req" data-rid="' + id + '" data-fk="del:' + id + '">Delete</button>' +
+      '</div></article>';
+  }
+  function viewRequests() {
+    var counts = { open: 0, closed: 0, all: S.requests.length };
+    S.requests.forEach(function (r) { counts[r.status === 'open' ? 'open' : 'closed']++; });
+    var list = S.requests.filter(function (r) { return ui.reqStatus === 'all' || r.status === ui.reqStatus; })
+      .sort(function (a, b) { return (a.status === b.status ? 0 : a.status === 'open' ? -1 : 1) || String(a.due).localeCompare(String(b.due)); });
+    var seg = [['open', 'Open'], ['closed', 'Closed'], ['all', 'All']].map(function (k) {
+      return '<button type="button" class="seg-btn" aria-pressed="' + (ui.reqStatus === k[0]) + '" data-act="req-filter" data-v="' + k[0] + '" data-fk="rf:' + k[0] + '">' + k[1] + ' (' + counts[k[0]] + ')</button>';
+    }).join('');
+    var body;
+    if (list.length) body = '<div class="req-list">' + list.map(reqCard).join('') + '</div>';
+    else if (!S.requests.length) body = '<div class="empty"><p>No requests yet. A request describes the question, the variables needed and the minimum scores a dataset must reach.</p><button type="button" class="btn" data-act="new-req" data-fk="empty-new">Create the first request</button></div>';
+    else body = '<div class="empty"><p>No ' + (ui.reqStatus === 'open' ? 'open' : 'closed') + ' requests.</p><button type="button" class="btn ghost sm" data-act="req-filter" data-v="all" data-fk="empty-all">Show all requests</button></div>';
+    return '<div class="viewhead"><h1>Requests</h1><p>Each data request is a "job posting": the question, the variables and the minimum scores. The Generator agent is simulated and returns random candidates.</p>' +
+      '<button type="button" class="btn" data-act="new-req" data-fk="new-req">New request</button></div>' +
+      '<div class="toolbar"><div class="seg-group" role="group" aria-label="Filter requests by status">' + seg + '</div></div>' + body;
+  }
+
+  /* Reviews */
+  function revItem(c) {
+    var d = toDate(c.review.datetime), r = req(c.requestId), id = esc(c.id);
+    return '<li class="rev"><div class="rev-when"><strong>' + (d ? esc(fmtWk.format(d)) : 'No date') + '</strong><span class="muted">' + (d ? esc(fmtT.format(d)) + ' · ' + d.getFullYear() : '') + '</span></div>' +
+      '<div><p><button type="button" class="linkbtn strong" data-act="open" data-id="' + id + '" data-fk="rv-open:' + id + '">' + esc(c.name) + '</button> <span class="badge st-' + c.stage + '">' + esc(stageLabel(c.stage)) + '</span></p>' +
+      '<p class="small muted">Steward: ' + esc(c.review.steward) + ' · ' + esc(r.title) + '</p>' +
+      (c.review.notes ? '<p class="rev-notes">' + esc(c.review.notes) + '</p>' : '<p class="rev-notes muted">No agenda recorded.</p>') + '</div>' +
+      '<div class="rev-actions">' + (c.stage !== 'released' && c.stage !== 'rejected' ? '<button type="button" class="btn ghost sm" data-act="schedule" data-id="' + id + '" data-fk="rv-edit:' + id + '">Edit</button>' : '') +
+      (c.stage !== 'released' ? '<button type="button" class="btn ghost sm danger-txt" data-act="remove-review" data-id="' + id + '" data-fk="rv-rm:' + id + '">Remove</button>' : '<span class="small muted">Locked</span>') + '</div></li>';
+  }
+  function viewReviews() {
+    var now = new Date();
+    var booked = S.candidates.filter(function (c) { return c.review; });
+    var isUp = function (c) { var d = toDate(c.review.datetime); return d && d >= now && c.stage !== 'rejected' && c.stage !== 'released'; };
+    var upcoming = booked.filter(isUp).sort(function (a, b) { return toDate(a.review.datetime) - toDate(b.review.datetime); });
+    var past = booked.filter(function (c) { return !isUp(c); }).sort(function (a, b) { return (toDate(b.review.datetime) || 0) - (toDate(a.review.datetime) || 0); });
+    var unbooked = S.candidates.filter(function (c) { return c.stage === 'review' && !c.review; });
+    var notice = unbooked.length ? '<div class="notice warn" role="note"><p><strong>' + unbooked.length + (unbooked.length === 1 ? ' candidate is' : ' candidates are') + ' in Steward review with no session booked.</strong></p><ul>' +
+      unbooked.map(function (c) { return '<li><span>' + esc(c.name) + '</span><button type="button" class="btn sm" data-act="schedule" data-id="' + esc(c.id) + '" data-fk="nb:' + esc(c.id) + '">Book review</button></li>'; }).join('') + '</ul></div>' : '';
+    return '<div class="viewhead"><h1>Steward reviews</h1><p>Book a human review session for a candidate before sign-off. The agenda becomes the review notes.</p>' +
+      '<button type="button" class="btn" data-act="schedule" data-fk="rv-new">Schedule review</button></div>' + notice +
+      '<h2 class="sub-h">Upcoming <span class="pill">' + upcoming.length + '</span></h2>' +
+      (upcoming.length ? '<ul class="rev-list">' + upcoming.map(revItem).join('') + '</ul>' : '<div class="empty"><p>No upcoming reviews. Choose Schedule review to book one.</p></div>') +
+      '<h2 class="sub-h">Past <span class="pill">' + past.length + '</span></h2>' +
+      (past.length ? '<ul class="rev-list">' + past.map(revItem).join('') + '</ul>' : '<div class="empty"><p>No past reviews yet. Finished sessions appear here.</p></div>');
+  }
+
+  /* Audit log */
+  function actorType(a) { if (a === 'You') return 'you'; if (/agent$/i.test(a)) return 'agent'; if (/^Steward/.test(a)) return 'steward'; return 'system'; }
+  function logRow(e, compact) {
+    var c = e.cid ? cand(e.cid) : null, r = e.rid ? req(e.rid) : null;
+    var links = compact ? '' : (c ? '<button type="button" class="linkbtn" data-act="open" data-id="' + esc(c.id) + '">' + esc(c.name) + '</button>' : '') + (r ? '<span class="code">' + esc(r.code) + '</span>' : '');
+    var actor = '<span class="actor actor-' + actorType(e.actor) + '"' + (actorType(e.actor) === 'agent' ? ' title="Simulated agent"' : '') + '>' + esc(e.actor) + '</span>';
+    var time = '<time datetime="' + esc(e.ts) + '">' + esc(showDT(e.ts)) + '</time>';
+    if (compact) return '<li class="log-row"><div class="row-top">' + time + actor + '</div><p class="log-text">' + esc(e.text) + '</p></li>';
+    return '<li class="log-row">' + time + actor + '<p class="log-text">' + esc(e.text) + '</p><p class="log-links">' + links + '</p></li>';
+  }
+  function sortedLog(list) { return list.slice().sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; }); }
+  function logListHTML() {
+    var q = ui.logQ.trim().toLowerCase();
+    var all = sortedLog(S.log);
+    var list = q ? all.filter(function (e) {
+      var c = e.cid ? cand(e.cid) : null, r = e.rid ? req(e.rid) : null;
+      return [e.actor, e.text, c ? c.name : '', r ? r.code : ''].join(' ').toLowerCase().indexOf(q) !== -1;
+    }) : all;
+    if (!list.length) {
+      return q ? '<div class="empty"><p>No entries match “' + esc(ui.logQ) + '”.</p><button type="button" class="btn ghost sm" data-act="clear-log">Clear search</button></div>'
+        : '<div class="empty"><p>The audit log is empty. Every action you take is recorded here.</p></div>';
+    }
+    var shown = list.slice(0, ui.logLimit);
+    return '<p class="small muted">Showing ' + shown.length + ' of ' + list.length + ' entries, newest first.</p><ol class="log">' + shown.map(function (e) { return logRow(e, false); }).join('') + '</ol>' +
+      (list.length > shown.length ? '<p style="margin-top:1rem"><button type="button" class="btn ghost sm" data-act="log-more" data-fk="log-more">Show 100 more</button></p>' : '');
+  }
+  function viewAudit() {
+    return '<div class="viewhead"><h1>Audit log</h1><p>Every action by you, the simulated agents and the stewards, newest first.</p></div>' +
+      '<div class="toolbar"><div class="fld grow"><label for="log-q">Search the log</label><input type="search" id="log-q" value="' + esc(ui.logQ) + '" placeholder="Actor, candidate, request or text" autocomplete="off"></div></div>' +
+      '<div id="log-list">' + logListHTML() + '</div>';
+  }
+
+  var VIEWS = { overview: viewOverview, pipeline: viewPipeline, requests: viewRequests, reviews: viewReviews, audit: viewAudit };
+
+  /* ---------- candidate panel ---------- */
+  function labTable(c, r) {
+    return '<table class="lab"><caption class="sr">Validation results for ' + esc(c.name) + ' against the request minimums</caption>' +
+      '<thead><tr><th scope="col">Check</th><th scope="col">Result</th><th scope="col">Reference</th><th scope="col">Flag</th></tr></thead><tbody>' +
+      METRICS.map(function (m) {
+        var v = Number(c.scores[m.key]), min = Number(r[m.min]), low = v < min;
+        return '<tr' + (low ? ' class="low"' : '') + '><th scope="row">' + m.label + '</th><td>' + esc(v) + '</td><td>&ge; ' + esc(min) + '</td><td>' + (low ? '<span class="flag">Low</span>' : '<span class="ok">In range</span>') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function draft(id, fallback) { return Object.prototype.hasOwnProperty.call(ui.drafts, id) ? ui.drafts[id] : (fallback || ''); }
+  function panelHTML(c) {
+    var r = req(c.requestId), id = esc(c.id), locked = c.stage === 'released';
+    var report;
+    if (busy.val[c.id]) report = '<p class="muted"><span class="spin" aria-hidden="true"></span> The Validator agent is scoring this candidate…</p>';
+    else if (c.scores) report = labTable(c, r) + (privacyFails(c) ? '<div class="notice err" style="margin-top:.6rem"><p>Privacy is below the minimum. This candidate cannot be signed off.</p></div>' : lowMetrics(c).length ? '<div class="notice warn" style="margin-top:.6rem"><p>Below minimum: ' + esc(lowText(c)) + '. Sign-off needs a written decision note.</p></div>' : '');
+    else report = '<p class="muted">Not yet scored. Run the Validator agent (simulated) to score fidelity, privacy and utility.</p>';
+    var reportBtns = locked ? '<p class="small muted">Released datasets are locked, so scores can\'t change.</p>' :
+      '<div class="btnrow"><button type="button" class="btn sm" data-act="validate-run" data-id="' + id + '" data-fk="p-val:' + id + '"' + (busy.val[c.id] ? ' disabled aria-busy="true"' : '') + '>' + (c.scores ? 'Re-run Validator' : 'Run Validator') + '</button>' +
+      '<button type="button" class="btn ghost sm" data-act="edit-scores" data-id="' + id + '" data-fk="p-edit:' + id + '">Edit scores</button></div>';
+    var rv = c.review || {};
+    var reviewSec = locked ? (c.review ? '<p>' + esc(showDT(rv.datetime)) + ' with <strong>' + esc(rv.steward) + '</strong></p>' + (rv.notes ? '<blockquote>' + esc(rv.notes) + '</blockquote>' : '') : '<p class="muted">No review recorded.</p>') :
+      '<div class="form-grid">' +
+      '<div class="fld"><label for="pr-dt">Date and time</label><input type="datetime-local" id="pr-dt" data-keep value="' + esc(draft('pr-dt', rv.datetime)) + '"><p class="field-err" id="pr-dt-err" hidden></p></div>' +
+      '<div class="fld"><label for="pr-st">Steward</label><input id="pr-st" data-keep list="steward-list" maxlength="60" autocomplete="off" value="' + esc(draft('pr-st', rv.steward)) + '" placeholder="e.g. M. Okafor"><p class="field-err" id="pr-st-err" hidden></p></div>' +
+      '<div class="fld full"><label for="pr-notes">Notes</label><textarea id="pr-notes" data-keep rows="3" maxlength="1500">' + esc(draft('pr-notes', rv.notes)) + '</textarea></div></div>' +
+      '<div class="btnrow"><button type="button" class="btn sm" data-act="save-review" data-id="' + id + '" data-fk="p-rsave:' + id + '">' + (c.review ? 'Save review' : 'Book review') + '</button>' +
+      (c.review ? '<button type="button" class="btn ghost sm danger-txt" data-act="remove-review" data-id="' + id + '" data-fk="p-rrm:' + id + '">Remove review</button>' : '') + '</div>';
+    var sign = c.decision ? '<p>Signed off by <strong>' + esc(c.decision.by) + '</strong> on ' + esc(showDT(c.decision.at)) + '.</p>' + (c.decision.note ? '<blockquote>' + esc(c.decision.note) + '</blockquote>' : '<p class="muted small">No decision note.</p>')
+      : '<p class="muted">Not signed off.</p>';
+    if (c.stage === 'rejected') sign += '<div class="notice err" style="margin-top:.5rem"><p><strong>Rejected.</strong> ' + esc(c.rejectReason || 'No reason recorded.') + '</p></div>';
+    var extra = (c.stage !== 'rejected' && c.stage !== 'released') ? '<button type="button" class="btn ghost sm danger-txt" data-act="reject" data-id="' + id + '" data-fk="p-rej:' + id + '">Reject</button>' : '';
+    var hist = sortedLog(S.log.filter(function (e) { return e.cid === c.id; }));
+    return '<section class="psec"><dl class="facts">' +
+      '<dt>Request</dt><dd><span class="code">' + esc(r.code) + '</span> ' + esc(r.title) + '</dd>' +
+      '<dt>Requester</dt><dd>' + esc(r.requester) + '</dd>' +
+      '<dt>Method</dt><dd>' + esc(c.method) + '</dd>' +
+      '<dt>Rows</dt><dd>' + fmtRows(c.rows) + '</dd>' +
+      '<dt>Generated</dt><dd>' + esc(showDT(c.generated)) + '</dd>' +
+      '<dt>Stage</dt><dd>' + esc(stageLabel(c.stage)) + '</dd></dl></section>' +
+      '<section class="psec" aria-labelledby="ps-rep"><h3 id="ps-rep">Validation report</h3>' + report + reportBtns + '</section>' +
+      '<section class="psec" aria-labelledby="ps-rev"><h3 id="ps-rev">Steward review</h3>' + reviewSec + '</section>' +
+      '<section class="psec" aria-labelledby="ps-sign"><h3 id="ps-sign">Sign-off record</h3>' + sign + '</section>' +
+      '<section class="psec" aria-labelledby="ps-move"><h3 id="ps-move">Move</h3><div class="btnrow">' + moveButtons(c, 'p-') + extra + '</div></section>' +
+      '<section class="psec" aria-labelledby="ps-hist"><h3 id="ps-hist">History <span class="pill">' + hist.length + '</span></h3>' +
+      (hist.length ? '<ol class="log compact">' + hist.map(function (e) { return logRow(e, true); }).join('') + '</ol>' : '<p class="muted">No history yet.</p>') + '</section>' +
+      '<section class="psec"><button type="button" class="btn ghost sm danger-txt" data-act="del-cand" data-id="' + id + '" data-fk="p-del:' + id + '">Delete candidate</button></section>' +
+      '<datalist id="steward-list">' + stewardNames().map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') + '</datalist>';
+  }
+  function renderPanel() {
+    var c = cand(ui.panel);
+    if (!c) { closePanel(); return; }
+    var body = $('#panel-body'), st = body.scrollTop, same = body.dataset.cid === c.id;
+    $('#panel-title').textContent = c.name;
+    var badge = $('#panel-stage');
+    badge.className = 'badge st-' + c.stage;
+    badge.textContent = stageLabel(c.stage);
+    body.innerHTML = panelHTML(c);
+    body.dataset.cid = c.id;
+    if (same) body.scrollTop = st;
+  }
+  function openPanel(cid) {
+    if (!cand(cid)) return;
+    var p = $('#panel');
+    if (!p.open) panelReturn = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
+    if (ui.panel !== cid) { ui.drafts = {}; $('#panel-body').dataset.cid = ''; }
+    ui.panel = cid;
+    renderPanel();
+    if (!p.open) p.showModal();
+    $('#panel-body').scrollTop = 0;
+    $('#panel-close').focus();
+  }
+  function closePanel() { var p = $('#panel'); if (p.open) p.close(); else afterPanelClose(); }
+  function afterPanelClose() {
+    var cid = ui.panel;
+    ui.panel = null; ui.drafts = {};
+    rehomeToasts();
+    var el = (panelReturn && document.querySelector('[data-fk="' + CSS.escape(panelReturn) + '"]')) || (cid && document.querySelector('[data-fk="open:' + CSS.escape(cid) + '"]'));
+    if (el) el.focus({ preventScroll: true });
+    panelReturn = null;
+  }
+
+  /* ---------- dialogs ---------- */
+  function openDialog(o) {
+    var d = $('#dlg');
+    if (!d.open) { dlgReturn = document.activeElement; dlgReturnFk = dlgReturn && dlgReturn.dataset ? dlgReturn.dataset.fk : null; }
+    $('#dlg-title').textContent = o.title;
+    $('#dlg-body').innerHTML = o.body;
+    $('#dlg-foot').innerHTML = (o.left || '') + '<button type="button" class="btn ghost sm" data-act="dlg-cancel">' + esc(o.cancel || 'Cancel') + '</button>' +
+      (o.submit ? '<button type="submit" class="btn sm' + (o.danger ? ' danger' : '') + '">' + esc(o.submit) + '</button>' : '') + (o.right || '');
+    dlgHandler = o.onSubmit || null;
+    if (!d.open) d.showModal();
+    rehomeToasts();
+    var first = $('#dlg-body [autofocus]') || $('#dlg-body input:not([type=hidden]):not([readonly]), #dlg-body select, #dlg-body textarea') || $('#dlg-foot [type=submit]') || $('#dlg-foot button');
+    if (first) first.focus();
+  }
+  function closeDlg() { var d = $('#dlg'); dlgHandler = null; if (d.open) d.close(); }
+  function fieldErrors(errs) {
+    var firstBad = null;
+    $$('#dlg [data-err]').forEach(function (p) { p.hidden = true; p.textContent = ''; });
+    $$('#dlg [aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
+    Object.keys(errs).forEach(function (name) {
+      var p = $('#dlg [data-err="' + name + '"]');
+      if (p) { p.textContent = errs[name]; p.hidden = false; }
+      var input = $('#dlg [name="' + name + '"]');
+      if (input) { input.setAttribute('aria-invalid', 'true'); if (p) { p.id = 'err-' + name; input.setAttribute('aria-describedby', p.id); } if (!firstBad) firstBad = input; }
+    });
+    if (firstBad) firstBad.focus();
+    return Object.keys(errs).length === 0;
+  }
+  function fld(name, label, control, cls, hint) {
+    return '<div class="fld ' + (cls || '') + '"><label for="f-' + name + '">' + label + (hint ? ' <small>' + hint + '</small>' : '') + '</label>' + control + '<p class="field-err" data-err="' + name + '" hidden></p></div>';
+  }
+  function intIn(v, lo, hi) { var n = Number(v); return v !== '' && Number.isInteger(n) && n >= lo && n <= hi ? n : null; }
+
+  function confirmDialog(o) {
+    openDialog({ title: o.title, body: '<p>' + o.html + '</p>', submit: o.confirm, danger: o.danger, onSubmit: function () { o.onConfirm(); } });
+  }
+
+  /* Request form */
+  function openRequestForm(rid) {
+    var r = rid ? req(rid) : null, has = r && candsOf(r.id).length > 0;
+    var v = r || { title: '', code: '', requester: '', question: '', variables: [], minFidelity: 85, minPrivacy: 90, minUtility: 80, due: localDate(new Date(Date.now() + 30 * 86400000)), status: 'open' };
+    var body = '<div class="form-grid">' +
+      fld('title', 'Title', '<input id="f-title" name="title" maxlength="160" value="' + esc(v.title) + '">', 'full') +
+      fld('code', 'Code', '<input id="f-code" name="code" maxlength="4" autocomplete="off" value="' + esc(v.code) + '"' + (has ? ' readonly' : '') + ' style="text-transform:uppercase">', '', has ? 'locked: candidates use it' : '2–4 letters, used in dataset names') +
+      fld('requester', 'Requester (role)', '<input id="f-requester" name="requester" maxlength="80" value="' + esc(v.requester) + '" placeholder="e.g. Patient flow analyst">') +
+      fld('question', 'Question', '<textarea id="f-question" name="question" rows="3" maxlength="1000">' + esc(v.question) + '</textarea>', 'full') +
+      fld('variables', 'Variables needed', '<input id="f-variables" name="variables" maxlength="600" value="' + esc(v.variables.join(', ')) + '" placeholder="e.g. age band, ward type, length of stay">', 'full', 'separate with commas') +
+      '<fieldset class="fld full"><legend>Minimum scores <small>whole numbers, 50–100</small></legend><div class="three">' +
+      METRICS.map(function (m) { return fld(m.min, m.label, '<input id="f-' + m.min + '" name="' + m.min + '" type="number" inputmode="numeric" min="50" max="100" step="1" value="' + esc(v[m.min]) + '">'); }).join('') + '</div></fieldset>' +
+      fld('due', 'Due date', '<input id="f-due" name="due" type="date" value="' + esc(v.due) + '">') +
+      (r ? fld('status', 'Status', '<select id="f-status" name="status"><option value="open"' + (v.status === 'open' ? ' selected' : '') + '>Open</option><option value="closed"' + (v.status === 'closed' ? ' selected' : '') + '>Closed</option></select>') : '') +
+      '</div>';
+    openDialog({
+      title: r ? 'Edit request ' + r.code : 'New request', body: body, submit: r ? 'Save changes' : 'Create request',
+      onSubmit: function (form) {
+        var f = form.elements, e = {}, val = function (n) { return f[n].value.trim(); };
+        var title = val('title'), code = val('code').toUpperCase(), requester = val('requester'), question = val('question');
+        var vars = val('variables').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!title) e.title = 'Enter a title.';
+        if (!has) {
+          if (!/^[A-Z]{2,4}$/.test(code)) e.code = 'Use 2 to 4 letters, A to Z.';
+          else if (S.requests.some(function (x) { return x.code === code && (!r || x.id !== r.id); })) e.code = 'Another request already uses ' + code + '.';
+        }
+        if (!requester) e.requester = 'Enter the requester’s role.';
+        if (!question) e.question = 'Describe the question the data should answer.';
+        if (!vars.length) e.variables = 'List at least one variable.';
+        var mins = {};
+        METRICS.forEach(function (m) { var n = intIn(val(m.min), 50, 100); if (n === null) e[m.min] = 'Enter a whole number from 50 to 100.'; mins[m.min] = n; });
+        var due = val('due');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || !toDate(due)) e.due = 'Choose a due date.';
+        if (!fieldErrors(e)) return false;
+        if (!r) {
+          var nr = { id: uid('r'), code: code, title: title, requester: requester, question: question, variables: vars, minFidelity: mins.minFidelity, minPrivacy: mins.minPrivacy, minUtility: mins.minUtility, due: due, status: 'open', created: nowIso(), seq: 0 };
+          S.requests.push(nr);
+          addLog('You', 'Created request ' + code + ': ' + title + '.', null, nr.id);
+          ui.reqStatus = ui.reqStatus === 'closed' ? 'open' : ui.reqStatus;
+          commit(); toast('Request ' + code + ' created. Run the Generator agent to add candidates.');
+          return;
+        }
+        var changed = [];
+        var next = { title: title, requester: requester, question: question, variables: vars, minFidelity: mins.minFidelity, minPrivacy: mins.minPrivacy, minUtility: mins.minUtility, due: due, status: f.status.value };
+        if (!has) next.code = code;
+        var labels = { title: 'title', code: 'code', requester: 'requester', question: 'question', variables: 'variables', minFidelity: 'minimum fidelity', minPrivacy: 'minimum privacy', minUtility: 'minimum utility', due: 'due date', status: 'status' };
+        Object.keys(next).forEach(function (k) { if (JSON.stringify(r[k]) !== JSON.stringify(next[k])) { changed.push(labels[k]); r[k] = next[k]; } });
+        if (!changed.length) { toast('No changes to save.'); return; }
+        addLog('You', 'Edited request ' + r.code + ': updated ' + changed.join(', ') + '.', null, r.id);
+        candsOf(r.id).forEach(function (c) { applyScoreRules(c, 'the new privacy minimum on ' + r.code); });
+        commit(); toast('Request ' + r.code + ' saved.');
+      }
+    });
+  }
+
+  /* Candidate: add */
+  function openAddCandidate() {
+    var open = S.requests.filter(function (r) { return r.status === 'open'; });
+    if (!open.length) {
+      openDialog({ title: 'Add candidate', body: '<p>There are no open requests. Candidates belong to a request, so create or reopen one first.</p>', submit: 'Go to Requests', onSubmit: function () { setTab('requests'); } });
+      return;
+    }
+    var pre = open.some(function (r) { return r.id === ui.fReq; }) ? ui.fReq : open[0].id;
+    var body = fld('request', 'Request', '<select id="f-request" name="request">' + open.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === pre ? ' selected' : '') + '>' + esc(r.code + ': ' + r.title) + '</option>'; }).join('') + '</select>') +
+      '<div class="form-grid">' + fld('method', 'Method', '<select id="f-method" name="method">' + METHOD_NAMES.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('') + '</select>') +
+      fld('rows', 'Rows', '<input id="f-rows" name="rows" type="number" inputmode="numeric" min="1000" max="5000000" step="1" value="' + (rint(200, 800) * 100) + '">', '', '1,000–5,000,000') + '</div>' +
+      '<p class="small muted">The candidate is added to Generated with the next name for that request, for example SYN-' + esc(open[0].code) + '-' + pad((open[0].seq || 0) + 1) + '.</p>';
+    openDialog({
+      title: 'Add candidate', body: body, submit: 'Add candidate',
+      onSubmit: function (form) {
+        var f = form.elements, r = req(f.request.value), rows = intIn(f.rows.value.trim(), 1000, 5000000), e = {};
+        if (!r || r.status !== 'open') e.request = 'Choose an open request.';
+        if (rows === null) e.rows = 'Enter a whole number from 1,000 to 5,000,000.';
+        if (METHOD_NAMES.indexOf(f.method.value) === -1) e.method = 'Choose a method.';
+        if (!fieldErrors(e)) return false;
+        var c = makeCandidate(r, f.method.value, rows, 'You');
+        commit(); toast(c.name + ' added to Generated.');
+      }
+    });
+  }
+  function makeCandidate(r, method, rows, actor) {
+    r.seq = (Number(r.seq) || 0) + 1;
+    var name = 'SYN-' + r.code + '-' + pad(r.seq);
+    var c = { id: uid('c'), requestId: r.id, name: name, method: method, rows: rows, generated: nowIso(), stage: 'generated', scores: null, review: null, decision: null, rejectReason: null };
+    S.candidates.push(c);
+    addLog(actor, actor === 'You' ? 'Added ' + name + ' manually (' + method + ', ' + fmtRows(rows) + ' rows).' : 'Generated ' + name + ' (' + method + ', ' + fmtRows(rows) + ' rows) inside the secure environment.', c.id, r.id);
+    return c;
+  }
+
+  /* Agents (simulated) */
+  function runGenerator(rid) {
+    var r = req(rid);
+    if (!r || busy.gen[rid]) return;
+    if (r.status !== 'open') { toast('Reopen ' + r.code + ' before generating candidates.', 'warn'); return; }
+    busy.gen[rid] = true; render();
+    toast('Generator agent (simulated) is building a candidate for ' + r.code + '…');
+    setTimeout(function () {
+      delete busy.gen[rid];
+      var rr = req(rid);
+      if (!rr || rr.status !== 'open') { render(); return; }
+      var method = METHOD_NAMES[rint(0, METHOD_NAMES.length - 1)];
+      var c = makeCandidate(rr, method, rint(200, 800) * 100, 'Generator agent');
+      commit(); toast('Generator agent created ' + c.name + ' (' + method + ').');
+    }, 700);
+  }
+  function runValidator(cid) {
+    var c = cand(cid);
+    if (!c || busy.val[cid]) return;
+    if (c.stage === 'released') { toast('Released datasets are locked, so they can\'t be re-validated.', 'warn'); return; }
+    busy.val[cid] = true; render();
+    toast('Validator agent (simulated) is scoring ' + c.name + '…');
+    setTimeout(function () {
+      delete busy.val[cid];
+      var cc = cand(cid);
+      if (!cc) { render(); return; }
+      var rg = METHODS[cc.method] || METHODS['TVAE'], had = !!cc.scores;
+      cc.scores = { fidelity: rint(rg.fidelity[0], rg.fidelity[1]), privacy: rint(rg.privacy[0], rg.privacy[1]), utility: rint(rg.utility[0], rg.utility[1]) };
+      var low = lowText(cc);
+      addLog('Validator agent', (had ? 'Re-scored ' : 'Scored ') + cc.name + ': fidelity ' + cc.scores.fidelity + ', privacy ' + cc.scores.privacy + ', utility ' + cc.scores.utility + '. ' + (low ? 'Below minimum: ' + low + '.' : 'All minimums met.'), cc.id, cc.requestId);
+      var withdrew = applyScoreRules(cc, 'the Validator re-run');
+      commit();
+      if (!withdrew) toast('Validator scored ' + cc.name + ': F ' + cc.scores.fidelity + ' · P ' + cc.scores.privacy + ' · U ' + cc.scores.utility + (low ? '. Below minimum: ' + low + '.' : '. All minimums met.'), privacyFails(cc) ? 'err' : low ? 'warn' : 'ok');
+    }, 800);
+  }
+  function applyScoreRules(c, cause) {
+    if (c.stage === 'approved' && c.scores && privacyFails(c)) {
+      var r = req(c.requestId), by = c.decision && c.decision.by;
+      c.stage = 'review'; c.decision = null;
+      addLog('System', 'Sign-off' + (by ? ' by ' + by : '') + ' withdrawn for ' + c.name + ': after ' + cause + ', privacy ' + c.scores.privacy + ' is below the minimum of ' + r.minPrivacy + '. Moved back to Steward review.', c.id, r.id);
+      toast('Sign-off withdrawn: ' + c.name + ' now fails privacy and is back in Steward review.', 'err');
+      return true;
+    }
+    return false;
+  }
+  function openEditScores(cid) {
+    var c = cand(cid); if (!c) return;
+    if (c.stage === 'released') { toast('Released datasets are locked.', 'warn'); return; }
+    var s = c.scores || {};
+    openDialog({
+      title: 'Edit scores for ' + c.name,
+      body: '<p class="small muted">A manual override replaces the Validator agent’s scores and is recorded in the audit log.</p><div class="three">' +
+        METRICS.map(function (m) { return fld('s-' + m.key, m.label, '<input id="f-s-' + m.key + '" name="s-' + m.key + '" type="number" inputmode="numeric" min="0" max="100" step="1" value="' + esc(s[m.key] != null ? s[m.key] : '') + '">'); }).join('') + '</div>',
+      submit: 'Save scores',
+      onSubmit: function (form) {
+        var e = {}, next = {};
+        METRICS.forEach(function (m) { var n = intIn(form.elements['s-' + m.key].value.trim(), 0, 100); if (n === null) e['s-' + m.key] = '0 to 100'; next[m.key] = n; });
+        if (!fieldErrors(e)) return false;
+        var prev = c.scores ? c.scores.fidelity + '/' + c.scores.privacy + '/' + c.scores.utility : 'not scored';
+        c.scores = next;
+        addLog('You', 'Manual override: set ' + c.name + ' scores to fidelity ' + next.fidelity + ', privacy ' + next.privacy + ', utility ' + next.utility + ' (was ' + prev + ').', c.id, c.requestId);
+        var withdrew = applyScoreRules(c, 'a manual override');
+        commit();
+        if (!withdrew) toast('Scores for ' + c.name + ' updated (manual override).');
+      }
+    });
+  }
+
+  /* Moves */
+  function setStage(c, to) {
+    var from = c.stage;
+    c.stage = to;
+    addLog('You', 'Moved ' + c.name + ' from ' + stageLabel(from) + ' to ' + stageLabel(to) + '.', c.id, c.requestId);
+  }
+  function requestMove(cid, to) {
+    var c = cand(cid); if (!c || c.stage === to) return;
+    var from = c.stage;
+    if (from === 'released') { toast(c.name + ' is released and locked. Use Withdraw to reject it with a reason.', 'warn'); return; }
+    if (to === 'rejected') { openReject(cid); return; }
+    if (from === 'rejected') {
+      if (to === 'generated') restore(cid);
+      else toast('Restore ' + c.name + ' to Generated first. Rejected candidates restart from Generated.', 'warn');
+      return;
+    }
+    var fi = ORDER.indexOf(from), ti = ORDER.indexOf(to);
+    if (ti > fi + 1) { toast('Stages can\'t be skipped. The next valid stage for ' + c.name + ' is ' + stageLabel(ORDER[fi + 1]) + '.', 'warn'); return; }
+    if (ti < fi) {
+      var wasApproved = from === 'approved', by = c.decision && c.decision.by;
+      if (wasApproved) c.decision = null;
+      setStage(c, to);
+      if (wasApproved) addLog('You', 'Withdrew the sign-off' + (by ? ' by ' + by : '') + ' for ' + c.name + ' by moving it back.', c.id, c.requestId);
+      commit();
+      toast(c.name + ' moved back to ' + stageLabel(to) + (wasApproved ? '. Sign-off withdrawn.' : '.'), wasApproved ? 'warn' : 'ok');
+      return;
+    }
+    if (to === 'validation') {
+      setStage(c, 'validation'); commit();
+      if (!c.scores) runValidator(cid);
+      else toast(c.name + ' moved to Validation. It already has scores.');
+      return;
+    }
+    if (to === 'review') {
+      if (busy.val[cid]) { toast('Wait for the Validator agent to finish scoring ' + c.name + '.', 'warn'); return; }
+      if (!c.scores) { toast(c.name + ' has no scores yet. Run the Validator before sending it to Steward review.', 'warn'); return; }
+      setStage(c, 'review'); commit();
+      toast(c.name + ' moved to Steward review.' + (c.review ? '' : ' Book a review session next.'));
+      return;
+    }
+    if (to === 'approved') { openSignOff(cid); return; }
+    if (to === 'released') { openRelease(cid); }
+  }
+  function moveNext(cid) { var c = cand(cid); if (!c) return; var i = ORDER.indexOf(c.stage); if (i > -1 && i < ORDER.length - 1) requestMove(cid, ORDER[i + 1]); }
+  function moveBack(cid) { var c = cand(cid); if (!c) return; var i = ORDER.indexOf(c.stage); if (i > 0) requestMove(cid, ORDER[i - 1]); }
+
+  function openSignOff(cid) {
+    var c = cand(cid), r = req(c.requestId);
+    if (c.stage !== 'review') { toast(c.name + ' must be in Steward review to be signed off.', 'warn'); return; }
+    if (!c.scores) { toast(c.name + ' has no scores. Run the Validator first.', 'warn'); return; }
+    var low = lowMetrics(c);
+    if (low.some(function (m) { return m.key === 'privacy'; })) {
+      openDialog({
+        title: 'Sign-off blocked: ' + c.name,
+        body: labTable(c, r) + '<div class="notice err" role="alert"><p><strong>Privacy ' + esc(c.scores.privacy) + ' is below the request minimum of ' + esc(r.minPrivacy) + '.</strong></p><p>A candidate that might point back to a real person can’t be approved, even with a written justification. Reject it and ask the Generator agent for a new candidate.</p></div>',
+        cancel: 'Close', submit: null,
+        right: '<button type="button" class="btn sm danger" data-act="reject-prefill" data-id="' + esc(c.id) + '">Reject candidate</button>'
+      });
+      return;
+    }
+    var lowFU = low;
+    var stewardVal = c.review && c.review.steward ? c.review.steward : '';
+    var body = labTable(c, r) +
+      (lowFU.length ? '<div class="notice warn"><p>' + esc(lowFU.map(function (m) { return m.label + ' ' + c.scores[m.key] + ' is below the minimum of ' + r[m.min]; }).join('. ')) + '. A written decision note is required to approve.</p></div>' : '') +
+      fld('by', 'Steward name', '<input id="f-by" name="by" maxlength="60" list="steward-list-d" autocomplete="off" value="' + esc(stewardVal) + '">') +
+      '<datalist id="steward-list-d">' + stewardNames().map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') + '</datalist>' +
+      '<div class="fld"><label class="check-row"><input type="checkbox" name="read" id="f-read"> I have read the validation report</label><p class="field-err" data-err="read" hidden></p></div>' +
+      fld('note', 'Decision note ' + (lowFU.length ? '<small>(required)</small>' : '<small>(optional)</small>'), '<textarea id="f-note" name="note" rows="3" maxlength="1000"></textarea>');
+    openDialog({
+      title: 'Sign off ' + c.name, body: body, submit: 'Sign off',
+      onSubmit: function (form) {
+        var f = form.elements, e = {}, by = f.by.value.trim(), note = f.note.value.trim();
+        if (!by) e.by = 'Enter the steward’s name.';
+        if (!f.read.checked) e.read = 'Confirm you have read the validation report.';
+        if (lowFU.length && !note) e.note = 'Explain why the below-minimum ' + lowFU.map(function (m) { return m.label.toLowerCase(); }).join(' and ') + ' is acceptable.';
+        if (!fieldErrors(e)) return false;
+        if (c.stage !== 'review' || privacyFails(c)) { toast(c.name + ' changed while this dialog was open. Try again.', 'warn'); render(); return; }
+        c.stage = 'approved';
+        c.decision = { by: by, at: nowIso(), note: note };
+        addLog('Steward: ' + by, 'Signed off ' + c.name + (note ? '. Note: ' + note : '.') + (lowFU.length ? ' Accepted below-minimum ' + lowFU.map(function (m) { return m.label.toLowerCase(); }).join(' and ') + '.' : ''), c.id, c.requestId);
+        commit(); toast(c.name + ' approved by ' + by + '. Release it when ready.');
+      }
+    });
+  }
+  function openRelease(cid) {
+    var c = cand(cid), r = req(c.requestId);
+    if (c.stage !== 'approved' || !c.decision) { toast(c.name + ' needs a steward sign-off before release.', 'warn'); return; }
+    openDialog({
+      title: 'Release ' + c.name + '?',
+      body: '<p>Release <strong>' + esc(c.name) + '</strong> to <strong>' + esc(r.requester) + '</strong> for “' + esc(r.title) + '”?</p>' +
+        '<div class="notice info"><p>Signed off by <strong>' + esc(c.decision.by) + '</strong> on ' + esc(showDT(c.decision.at)) + '.</p>' +
+        (c.decision.note ? '<p>Note: “' + esc(c.decision.note) + '”</p>' : '<p class="muted">No decision note.</p>') + '</div>' +
+        '<p class="small muted">Released datasets are locked. Afterwards the only action is Withdraw.</p>',
+      submit: 'Release dataset',
+      onSubmit: function () {
+        if (c.stage !== 'approved') { toast(c.name + ' changed while this dialog was open.', 'warn'); render(); return; }
+        c.stage = 'released';
+        addLog('You', 'Released ' + c.name + ' to ' + r.requester + ' (signed off by ' + c.decision.by + ').', c.id, r.id);
+        commit(); toast(c.name + ' released to ' + r.requester + '.');
+      }
+    });
+  }
+  function openReject(cid, prefill) {
+    var c = cand(cid); if (!c || c.stage === 'rejected') return;
+    var withdraw = c.stage === 'released';
+    openDialog({
+      title: (withdraw ? 'Withdraw ' : 'Reject ') + c.name,
+      body: (withdraw ? '<p>' + esc(c.name) + ' has been released. Withdrawing it moves it to Rejected and records your reason.</p>' : '') +
+        fld('reason', 'Reason', '<textarea id="f-reason" name="reason" rows="3" maxlength="600">' + esc(prefill || '') + '</textarea>'),
+      submit: withdraw ? 'Withdraw dataset' : 'Reject candidate', danger: true,
+      onSubmit: function (form) {
+        var reason = form.elements.reason.value.trim();
+        if (!fieldErrors(reason ? {} : { reason: 'Give a reason. It is recorded in the audit log.' })) return false;
+        var from = c.stage;
+        c.stage = 'rejected'; c.rejectReason = reason; c.decision = null;
+        addLog('You', withdraw ? 'Withdrew released ' + c.name + ': ' + reason : 'Rejected ' + c.name + ' from ' + stageLabel(from) + ': ' + reason, c.id, c.requestId);
+        commit();
+        toast(c.name + (withdraw ? ' withdrawn.' : ' rejected.') + (ui.showRejected ? '' : ' Turn on Show rejected in the pipeline to see it.'), 'warn');
+      }
+    });
+    var ta = $('#f-reason'); if (ta && prefill) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
+  function restore(cid) {
+    var c = cand(cid); if (!c || c.stage !== 'rejected') return;
+    c.stage = 'generated'; c.rejectReason = null;
+    addLog('You', 'Restored ' + c.name + ' from Rejected to Generated.', c.id, c.requestId);
+    commit(); toast(c.name + ' restored to Generated.');
+  }
+
+  /* Reviews */
+  function validateReview(dt, steward) {
+    var e = {};
+    if (!dt || !toDate(dt)) e.dt = 'Choose a date and time.';
+    if (!steward) e.st = 'Enter the steward’s name.';
+    return e;
+  }
+  function saveReview(c, dt, steward, notes) {
+    var had = !!c.review;
+    c.review = { datetime: dt, steward: steward, notes: notes };
+    addLog('You', (had ? 'Updated steward review for ' : 'Booked steward review for ') + c.name + ' with ' + steward + ' on ' + showDT(dt) + '.', c.id, c.requestId);
+  }
+  function openSchedule(cid) {
+    var eligible = S.candidates.filter(function (c) { return c.stage !== 'rejected' && c.stage !== 'released'; })
+      .sort(function (a, b) { return ORDER.indexOf(b.stage) - ORDER.indexOf(a.stage) || a.name.localeCompare(b.name, 'en', { numeric: true }); });
+    if (!eligible.length) { openDialog({ title: 'Schedule review', body: '<p>No candidates can be reviewed right now. Generate a candidate from the Requests tab first.</p>', cancel: 'Close' }); return; }
+    var unb = eligible.find(function (c) { return c.stage === 'review' && !c.review; });
+    var sel = cand(cid) && eligible.some(function (c) { return c.id === cid; }) ? cand(cid) : (unb || eligible[0]);
+    var dflt = new Date(); dflt.setDate(dflt.getDate() + 1); dflt.setHours(10, 0, 0, 0);
+    var rv = sel.review || {};
+    var body = fld('cand', 'Candidate', '<select id="f-cand" name="cand">' + eligible.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (c.id === sel.id ? ' selected' : '') + '>' + esc(c.name + ' · ' + stageLabel(c.stage) + (c.review ? ' · booked' : '')) + '</option>';
+    }).join('') + '</select>') +
+      '<div class="form-grid">' + fld('dt', 'Date and time', '<input id="f-dt" name="dt" type="datetime-local" value="' + esc(rv.datetime || localDT(dflt)) + '">') +
+      fld('st', 'Steward', '<input id="f-st" name="st" maxlength="60" list="steward-list-s" autocomplete="off" value="' + esc(rv.steward || '') + '" placeholder="e.g. J. Tremblay">') + '</div>' +
+      '<datalist id="steward-list-s">' + stewardNames().map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('') + '</datalist>' +
+      fld('agenda', 'Agenda', '<textarea id="f-agenda" name="agenda" rows="3" maxlength="1500" placeholder="What the steward should check">' + esc(rv.notes || '') + '</textarea>') +
+      '<p class="small muted" id="sched-note">' + (sel.review ? 'Saving replaces the current booking.' : '') + '</p>';
+    openDialog({
+      title: sel.review && cid ? 'Edit steward review' : 'Schedule steward review', body: body, submit: sel.review && cid ? 'Save review' : 'Book review',
+      onSubmit: function (form) {
+        var f = form.elements, c = cand(f.cand.value), dt = f.dt.value, st = f.st.value.trim(), e = validateReview(dt, st);
+        if (!c) e.cand = 'Choose a candidate.';
+        if (!fieldErrors(e)) return false;
+        saveReview(c, dt, st, f.agenda.value.trim());
+        commit(); toast('Steward review for ' + c.name + ' booked for ' + showDT(dt) + ' with ' + st + '.');
+      }
+    });
+  }
+  function onScheduleCandChange(sel) {
+    var c = cand(sel.value); if (!c) return;
+    var rv = c.review || {};
+    if (rv.datetime) $('#f-dt').value = rv.datetime;
+    $('#f-st').value = rv.steward || $('#f-st').value;
+    $('#f-agenda').value = rv.notes || '';
+    $('#sched-note').textContent = c.review ? 'Saving replaces the current booking.' : '';
+  }
+  function panelSaveReview(cid) {
+    var c = cand(cid); if (!c) return;
+    var dt = $('#pr-dt').value, st = $('#pr-st').value.trim(), notes = $('#pr-notes').value.trim(), e = validateReview(dt, st);
+    ['dt', 'st'].forEach(function (k) {
+      var p = $('#pr-' + k + '-err'), input = $('#pr-' + k);
+      p.hidden = !e[k]; p.textContent = e[k] || '';
+      if (e[k]) { input.setAttribute('aria-invalid', 'true'); input.setAttribute('aria-describedby', p.id); } else input.removeAttribute('aria-invalid');
+    });
+    if (e.dt || e.st) { (e.dt ? $('#pr-dt') : $('#pr-st')).focus(); return; }
+    ui.drafts = {};
+    saveReview(c, dt, st, notes);
+    commit(); toast('Steward review saved for ' + c.name + '.');
+  }
+  function removeReview(cid) {
+    var c = cand(cid); if (!c || !c.review) return;
+    confirmDialog({
+      title: 'Remove review?', html: 'Remove the steward review for <strong>' + esc(c.name) + '</strong> on ' + esc(showDT(c.review.datetime)) + '?', confirm: 'Remove review', danger: true,
+      onConfirm: function () { c.review = null; ui.drafts = {}; addLog('You', 'Removed the steward review for ' + c.name + '.', c.id, c.requestId); commit(); toast('Review removed for ' + c.name + '.'); }
+    });
+  }
+
+  /* Delete */
+  function deleteCandidate(cid) {
+    var c = cand(cid); if (!c) return;
+    confirmDialog({
+      title: 'Delete ' + c.name + '?', html: 'Delete <strong>' + esc(c.name) + '</strong>? Its audit history stays in the log. This can’t be undone.', confirm: 'Delete candidate', danger: true,
+      onConfirm: function () {
+        S.candidates = S.candidates.filter(function (x) { return x.id !== cid; });
+        addLog('You', 'Deleted candidate ' + c.name + ' (' + stageLabel(c.stage) + ').', null, c.requestId);
+        closePanel(); commit(); toast(c.name + ' deleted.');
+      }
+    });
+  }
+  function deleteRequest(rid) {
+    var r = req(rid); if (!r) return;
+    var n = candsOf(rid).length;
+    confirmDialog({
+      title: 'Delete request ' + r.code + '?', html: 'Delete <strong>' + esc(r.code + ': ' + r.title) + '</strong>' + (n ? ' and its ' + n + (n === 1 ? ' candidate' : ' candidates') : '') + '? This can’t be undone.', confirm: 'Delete request', danger: true,
+      onConfirm: function () {
+        S.candidates = S.candidates.filter(function (c) { return c.requestId !== rid; });
+        S.requests = S.requests.filter(function (x) { return x.id !== rid; });
+        addLog('You', 'Deleted request ' + r.code + ' (' + r.title + ')' + (n ? ' and ' + n + (n === 1 ? ' candidate.' : ' candidates.') : '.'), null, null);
+        if (ui.fReq === rid) ui.fReq = 'all';
+        commit(); toast('Request ' + r.code + ' deleted' + (n ? ' with ' + n + (n === 1 ? ' candidate.' : ' candidates.') : '.'));
+      }
+    });
+  }
+  function toggleRequest(rid) {
+    var r = req(rid); if (!r) return;
+    r.status = r.status === 'open' ? 'closed' : 'open';
+    addLog('You', (r.status === 'open' ? 'Reopened' : 'Closed') + ' request ' + r.code + '.', null, r.id);
+    commit(); toast('Request ' + r.code + (r.status === 'open' ? ' reopened.' : ' closed. It no longer accepts new candidates.'));
+  }
+
+  /* About + reset */
+  function openAbout() {
+    var rows = [
+      ['Job posting management', 'Data requests: question, variables needed, minimum scores'],
+      ['Candidate tracking', 'Synthetic dataset candidates per request'],
+      ['Evaluation criteria', 'Fidelity, privacy and utility scores (0–100) against the request’s minimums'],
+      ['Interview scheduling and notes', 'Steward review sessions with date, steward and notes'],
+      ['Pipeline view (Applied → Hired)', 'Generated → Validation → Steward review → Approved → Released']
+    ];
+    openDialog({
+      title: 'About this prototype',
+      body: '<p>SimWard is a concept for giving hospital analysts realistic synthetic data without exposing real patients. A Generator agent builds synthetic datasets inside a secure environment, a Validator agent scores them, and a human data steward signs off before anything is released. Every step is logged.</p>' +
+        '<p>This prototype treats each synthetic dataset as a candidate moving through a hiring-style pipeline.</p>' +
+        '<table class="map"><thead><tr><th scope="col">Hiring assistant requirement</th><th scope="col">SimWard version</th></tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</tbody></table>' +
+        '<div class="notice info"><p>All data is fictional, the agents are simulated, and changes are saved in this browser only.</p></div>',
+      cancel: 'Close', submit: null,
+      left: '<button type="button" class="btn ghost sm danger-txt left" data-act="reset-ask">Reset demo data</button>'
+    });
+  }
+  function resetDemo() {
+    confirmDialog({
+      title: 'Reset demo data?', html: 'This replaces all requests, candidates, reviews and the audit log with the original fictional demo data.', confirm: 'Reset demo data', danger: true,
+      onConfirm: function () {
+        S = seed(); normalise();
+        ui = { tab: ui.tab, fReq: 'all', q: '', showRejected: false, reqStatus: 'open', logQ: '', logLimit: 100, panel: null, drafts: {}, flashStage: null, hlReq: null };
+        busy = { gen: {}, val: {} };
+        closePanel(); commit(); toast('Demo data reset.');
+      }
+    });
+  }
+
+  /* ---------- navigation ---------- */
+  function setTab(t, keepFocus) {
+    if (TABS.indexOf(t) === -1) t = 'overview';
+    ui.tab = t;
+    try { history.replaceState(null, '', '#' + t); } catch (e) { /* ignore */ }
+    render();
+    if (keepFocus) { var b = $('#tab-' + t); if (b) b.focus(); }
+  }
+  function gotoStage(stage) {
+    ui.flashStage = stage;
+    if (stage === 'rejected') ui.showRejected = true;
+    setTab('pipeline');
+    ui.flashStage = null;
+    var col = $('#col-' + stage);
+    if (col) {
+      col.scrollIntoView({ block: 'nearest', inline: 'start', behavior: reduced() ? 'auto' : 'smooth' });
+      var h = col.querySelector('h2'); if (h) h.focus({ preventScroll: true });
+    }
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-act],[data-tab]') : null;
+    if (!t) return;
+    if (t.dataset.tab) { setTab(t.dataset.tab); return; }
+    var id = t.dataset.id, rid = t.dataset.rid;
+    switch (t.dataset.act) {
+      case 'about': openAbout(); break;
+      case 'reset-ask': resetDemo(); break;
+      case 'dlg-cancel': closeDlg(); break;
+      case 'panel-close': closePanel(); break;
+      case 'goto-stage': gotoStage(t.dataset.stage); break;
+      case 'show-rejected': ui.showRejected = true; gotoStage('rejected'); break;
+      case 'open': if ($('#dlg').open) closeDlg(); openPanel(id); break;
+      case 'next': moveNext(id); break;
+      case 'back': moveBack(id); break;
+      case 'validate-run': runValidator(id); break;
+      case 'edit-scores': openEditScores(id); break;
+      case 'reject': openReject(id); break;
+      case 'reject-prefill': {
+        var c = cand(id), r = c && req(c.requestId);
+        if (c) openReject(id, 'Privacy score ' + c.scores.privacy + ' is below the request minimum of ' + r.minPrivacy + '.');
+        break;
+      }
+      case 'withdraw': openReject(id); break;
+      case 'restore': restore(id); break;
+      case 'release': openRelease(id); break;
+      case 'book': case 'schedule': openSchedule(id); break;
+      case 'save-review': panelSaveReview(id); break;
+      case 'remove-review': removeReview(id); break;
+      case 'del-cand': deleteCandidate(id); break;
+      case 'add-cand': openAddCandidate(); break;
+      case 'generate': runGenerator(rid); break;
+      case 'new-req': openRequestForm(null); break;
+      case 'edit-req': openRequestForm(rid); break;
+      case 'toggle-req': toggleRequest(rid); break;
+      case 'del-req': deleteRequest(rid); break;
+      case 'req-filter': ui.reqStatus = t.dataset.v; render(); break;
+      case 'view-in-pipeline': ui.fReq = rid; ui.q = ''; setTab('pipeline'); break;
+      case 'view-request': {
+        var rq = req(rid); if (!rq) break;
+        ui.reqStatus = rq.status === 'open' ? 'open' : 'all'; ui.hlReq = rid;
+        setTab('requests'); ui.hlReq = null;
+        var el = document.getElementById('req-' + rid);
+        if (el) { el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); var b = el.querySelector('button'); if (b) b.focus({ preventScroll: true }); }
+        break;
+      }
+      case 'clear-filters': ui.fReq = 'all'; ui.q = ''; render(); var q = $('#f-q'); if (q) q.focus(); break;
+      case 'clear-log': ui.logQ = ''; render(); var lq = $('#log-q'); if (lq) lq.focus(); break;
+      case 'log-more': ui.logLimit += 100; render(); break;
+    }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'f-req') { ui.fReq = t.value; render(); }
+    else if (t.id === 'f-rej') { ui.showRejected = t.checked; render(); }
+    else if (t.id === 'f-cand') onScheduleCandChange(t);
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.id === 'f-q') { ui.q = t.value; $('#board-wrap').innerHTML = boardHTML(); }
+    else if (t.id === 'log-q') { ui.logQ = t.value; ui.logLimit = 100; $('#log-list').innerHTML = logListHTML(); }
+    else if (t.hasAttribute && t.hasAttribute('data-keep')) ui.drafts[t.id] = t.value;
+  });
+  $('.tabs').addEventListener('keydown', function (e) {
+    var cur = e.target.closest ? e.target.closest('[data-tab]') : null;
+    var i = TABS.indexOf(cur ? cur.dataset.tab : ui.tab), k = e.key, n = null;
+    if (k === 'ArrowRight') n = (i + 1) % TABS.length;
+    else if (k === 'ArrowLeft') n = (i - 1 + TABS.length) % TABS.length;
+    else if (k === 'Home') n = 0;
+    else if (k === 'End') n = TABS.length - 1;
+    if (n === null) return;
+    e.preventDefault(); setTab(TABS[n], true);
+  });
+  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (TABS.indexOf(h) !== -1 && h !== ui.tab) setTab(h); });
+
+  $('#dlg-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var h = dlgHandler;
+    if (!h) { closeDlg(); return; }
+    var res = h(e.target);
+    if (res !== false && dlgHandler === h) closeDlg();
+  });
+  $('#dlg').addEventListener('close', function () {
+    dlgHandler = null;
+    rehomeToasts();
+    var back = dlgReturn, fk = dlgReturnFk; dlgReturn = null; dlgReturnFk = null;
+    var panelOpen = $('#panel').open;
+    if (!(back && document.contains(back) && back.offsetParent !== null) && fk) back = (panelOpen ? $('#panel') : document).querySelector('[data-fk="' + CSS.escape(fk) + '"]');
+    if (back && document.contains(back) && back.offsetParent !== null && !back.disabled) back.focus({ preventScroll: true });
+    else if (panelOpen) $('#panel-close').focus();
+  });
+  $('#panel').addEventListener('close', afterPanelClose);
+  $('#panel').addEventListener('click', function (e) { if (e.target === this) closePanel(); });
+
+  /* Drag and drop (desktop). Buttons cover touch and keyboard. */
+  document.addEventListener('dragstart', function (e) {
+    var card = e.target.closest ? e.target.closest('.card') : null;
+    if (!card) return;
+    dragId = card.dataset.cid;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragId); } catch (err) { /* ignore */ }
+    card.classList.add('dragging');
+  });
+  document.addEventListener('dragend', function () {
+    $$('.dragging, .drop-over').forEach(function (x) { x.classList.remove('dragging', 'drop-over'); });
+    dragId = null;
+  });
+  document.addEventListener('dragover', function (e) {
+    var zone = e.target.closest ? e.target.closest('[data-drop]') : null;
+    if (!zone || !dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    $$('.drop-over').forEach(function (x) { if (x !== zone) x.classList.remove('drop-over'); });
+    zone.classList.add('drop-over');
+  });
+  document.addEventListener('drop', function (e) {
+    var zone = e.target.closest ? e.target.closest('[data-drop]') : null;
+    if (!zone || !dragId) return;
+    e.preventDefault();
+    var id = dragId; dragId = null;
+    $$('.drop-over, .dragging').forEach(function (x) { x.classList.remove('drop-over', 'dragging'); });
+    requestMove(id, zone.dataset.drop);
+  });
+
+  /* ---------- start ---------- */
+  var corrupt = load();
+  var h = location.hash.slice(1);
+  ui.tab = TABS.indexOf(h) !== -1 ? h : 'overview';
+  render();
+  if (corrupt) toast('Saved data couldn’t be read, so the fictional demo data was restored.', 'warn');
+})();
+</script>
+
+<!-- Chatbase chat widget -->
+<script>
+(function(){if(!window.chatbase||window.chatbase("getState")!=="initialized"){window.chatbase=(...arguments)=>{if(!window.chatbase.q){window.chatbase.q=[]}window.chatbase.q.push(arguments)};window.chatbase=new Proxy(window.chatbase,{get(target,prop){if(prop==="q"){return target.q}return(...args)=>target(prop,...args)}})}const onLoad=function(){const script=document.createElement("script");script.src="https://www.chatbase.co/embed.min.js";script.id="9_7x9GsZdZyELpq3squKh";script.domain="www.chatbase.co";document.body.appendChild(script)};if(document.readyState==="complete"){onLoad()}else{window.addEventListener("load",onLoad)}})();
+</script>
+</body>
+</html>
