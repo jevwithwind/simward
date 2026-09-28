@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SimWard | Hospital data without real patients</title>
+<meta name="description" content="SimWard is a student concept: AI agents create synthetic patient records so hospital analysts can explore data without exposing real patients.">
+<meta property="og:title" content="SimWard | Hospital data without real patients">
+<meta property="og:description" content="A student concept for hospital analytics using synthetic data, with a chat assistant that answers questions about it.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F5F6; --ink:#13262B; --muted:#4A5D62; --rule:#CBD6D8;
+    --teal:#0B6B66; --teal-dark:#084F4B; --synth:#5A48C8; --ring:#9DAFB3;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:1.0625rem/1.6 "Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{max-width:68rem;margin:0 auto;padding:0 1.5rem}
+  header{padding:1.25rem 0;border-bottom:1px solid var(--rule)}
+  .mark{display:inline-flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.25rem;letter-spacing:-.01em}
+  .mark svg{width:28px;height:28px;flex:none}
+  .hero{display:grid;grid-template-columns:1.1fr 1fr;gap:3rem;align-items:center;padding:4rem 0 3.5rem}
+  h1{font-size:clamp(2.1rem,4.2vw,3.4rem);line-height:1.08;letter-spacing:-.02em;margin:0 0 1.25rem;max-width:18ch}
+  .lede{max-width:34rem;color:var(--muted);margin:0 0 2rem}
+  .btn{display:inline-block;background:var(--teal);color:#fff;text-decoration:none;font-weight:700;
+    padding:.85rem 1.4rem;border-radius:.4rem}
+  .btn:hover{background:var(--teal-dark)}
+  a:focus-visible{outline:3px solid var(--synth);outline-offset:3px}
+  .hint{display:block;margin-top:.75rem;font-size:.9rem;color:var(--muted)}
+  .hint[hidden]{display:none}
+  figure{margin:0}
+  #field{width:100%;height:auto;display:block}
+  #field text{font-family:"Atkinson Hyperlegible",system-ui,sans-serif;font-size:12px;fill:var(--muted)}
+  .axis{stroke:var(--rule);stroke-width:1.5}
+  .ring{fill:none;stroke:var(--ring);stroke-width:1.2}
+  .dot{fill:var(--synth);opacity:0}
+  .dot.on{opacity:.9;transition:opacity .6s ease}
+  figcaption{font-size:.9rem;color:var(--muted);margin-top:.75rem;max-width:30rem}
+  section{padding:3rem 0;border-top:1px solid var(--rule)}
+  h2{font-size:1.6rem;line-height:1.2;margin:0 0 1.5rem}
+  .steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:2rem}
+  .steps li{counter-increment:s}
+  .steps li::before{content:counter(s);display:block;font-size:2.4rem;font-weight:700;color:var(--synth);line-height:1;margin-bottom:.5rem}
+  .steps h3{font-size:1.1rem;margin:0 0 .35rem}
+  .steps p{margin:0;color:var(--muted)}
+  .who{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
+  .who p{margin:0;color:var(--muted)}
+  .who strong{display:block;color:var(--ink);margin-bottom:.25rem}
+  .ask p{max-width:40rem;color:var(--muted);margin:0 0 1.5rem}
+  footer{padding:2rem 0 3rem;border-top:1px solid var(--rule);font-size:.9rem;color:var(--muted)}
+  footer p{max-width:44rem;margin:0}
+  footer a{color:var(--teal)}
+  @media (max-width:52rem){
+    .hero{grid-template-columns:1fr;padding:2.5rem 0}
+    .steps{grid-template-columns:1fr 1fr}
+    .who{grid-template-columns:1fr}
+  }
+  @media (max-width:32rem){.steps{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.dot{opacity:.9}.dot.on{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="mark">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#0B6B66"/>
+        <g fill="#C4BCFF"><circle cx="32" cy="16" r="5.4"/><circle cx="48" cy="16" r="5.4"/><circle cx="16" cy="32" r="5.4"/><circle cx="48" cy="32" r="5.4"/><circle cx="16" cy="48" r="5.4"/><circle cx="32" cy="48" r="5.4"/></g>
+        <g fill="none" stroke="#fff" stroke-width="1.8"><circle cx="16" cy="16" r="4.5"/><circle cx="32" cy="32" r="4.5"/><circle cx="48" cy="48" r="4.5"/></g>
+      </svg>
+      SimWard
+    </span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Hospital data you can explore without exposing a single patient.</h1>
+      <p class="lede">SimWard is a student concept for hospital analytics. AI agents create synthetic patient records, test them for accuracy and privacy, and help analysts run their questions. A person signs off before anything is released.</p>
+      <a class="btn chat-link" href="#ask">Open the assistant</a>
+      <span class="hint" id="widget-hint" hidden>Or use the chat bubble in the bottom corner.</span>
+    </div>
+    <figure>
+      <svg id="field" viewBox="0 0 400 300" role="img" aria-label="Illustration: synthetic records, shown as violet dots, follow the same pattern as real records, shown as grey rings."></svg>
+      <figcaption>Illustration. Grey rings are the pattern in real records, which never leave the hospital. Violet dots are new synthetic records with the same shape.</figcaption>
+    </figure>
+  </div>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><h3>Generate</h3><p>An agent builds synthetic records that mirror the statistical shape of real data.</p></li>
+      <li><h3>Test</h3><p>A second agent checks that key patterns hold and that no record can be traced to a person.</p></li>
+      <li><h3>Analyse</h3><p>A third agent helps analysts ask questions of the approved dataset in plain language.</p></li>
+      <li><h3>Sign off</h3><p>A human data steward approves every release, and each step is logged.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Who it helps</h2>
+    <div class="who">
+      <p><strong>Analysts</strong>Start exploring sooner, without waiting on access to real records.</p>
+      <p><strong>Researchers and vendors</strong>Prototype and test tools without touching patient information.</p>
+      <p><strong>Privacy teams</strong>Get a documented, auditable process instead of one-off exceptions.</p>
+    </div>
+  </section>
+
+  <section class="ask" id="ask">
+    <h2>Ask the assistant</h2>
+    <p>Ask how synthetic data works, what the checks involve, what it can and can't be used for, or how a pilot would run. The assistant answers only about SimWard and tells you when a question is outside its scope.</p>
+    <a class="btn chat-link" href="#ask">Open the assistant</a>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>SimWard is a student concept by Kevin, created during an AI prototyping course in autumn 2026. It is not affiliated with any hospital and uses no real patient or hospital data. Contact: <a href="mailto:k.li53@lse.ac.uk">k.li53@lse.ac.uk</a></p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var svg = document.getElementById('field');
+  if (!svg) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var seed = 11;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function gauss() { var u = rnd() || 1e-9, v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+  function pt() {
+    var a = gauss(), b = gauss();
+    return { x: clamp(205 + a * 60, 42, 385), y: clamp(150 - (0.72 * a + 0.69 * b) * 45, 32, 262) };
+  }
+  function el(name, attrs) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    svg.appendChild(n);
+    return n;
+  }
+  el('line', { x1: 30, y1: 272, x2: 392, y2: 272, 'class': 'axis' });
+  el('line', { x1: 30, y1: 24, x2: 30, y2: 272, 'class': 'axis' });
+  el('text', { x: 392, y: 292, 'text-anchor': 'end' }).textContent = 'Patient age';
+  el('text', { x: 30, y: 16 }).textContent = 'Length of stay';
+  var i, p, dots = [];
+  for (i = 0; i < 80; i++) {
+    p = pt();
+    el('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 4.5, 'class': 'ring' });
+  }
+  for (i = 0; i < 80; i++) {
+    p = pt();
+    var d = el('circle', { cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 3.2, 'class': 'dot' });
+    d.style.transitionDelay = (i * 12) + 'ms';
+    dots.push(d);
+  }
+  setTimeout(function () { dots.forEach(function (d) { d.classList.add('on'); }); }, 300);
+})();
+</script>
+
+<!-- CHATBASE_WIDGET_SCRIPT -->
+</body>
+</html>
