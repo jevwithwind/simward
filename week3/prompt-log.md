@@ -243,3 +243,11 @@ Before drawing, list your assumptions in 3 bullets. Export `workflow.png` and `w
 ---
 
 <!-- Later prompts in this session are appended below, each with one line on what changed. -->
+
+## 2. 2026-10-02: colour tone
+
+> merged, the chatbase bubble shows on the pipeline page, though the website is a little too dark in color tone
+
+(Follow-up answer: "Light page, heavy colours".)
+
+**What changed:** Lightened the pipeline page's light theme: soft tinted action buttons instead of solid dark teal, light toasts, thinner stage colour bars, and a lighter validated stage scale ending at the brand teal.
