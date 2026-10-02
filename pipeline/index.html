@@ -14,9 +14,9 @@
   :root{
     --bg:#F2F5F6; --surface:#FFFFFF; --surface-2:#E7EEEF; --ink:#13262B; --muted:#4A5D62; --rule:#CBD6D8;
     --teal:#0B6B66; --teal-dark:#084F4B; --on-teal:#FFFFFF; --synth:#5A48C8; --synth-soft:#ECE9FF; --ring:#9DAFB3;
-    --err:#B3261E; --err-bg:#FCEBE9; --warn:#7A5200; --warn-bg:#FFF3D6; --warn-line:#E0A526; --info-bg:#E3F1F0;
+    --soft-bg:#E3F1F0; --soft-ink:#084F4B; --soft-line:#A9D3CF; --err:#B3261E; --err-bg:#FCEBE9; --warn:#7A5200; --warn-bg:#FFF3D6; --warn-line:#E0A526; --info-bg:#E3F1F0;
     /* Pipeline stages: one validated teal ramp, light (early) to dark (released). Rejected uses the reserved error red. */
-    --s-generated:#7BBDB6; --s-validation:#4AA198; --s-review:#26847C; --s-approved:#0B6B66; --s-released:#064541; --s-rejected:#B3261E;
+    --s-generated:#7FC2BB; --s-validation:#55A9A1; --s-review:#33918A; --s-approved:#197C75; --s-released:#0B6463; --s-rejected:#B3261E;
     --shadow:0 1px 2px rgba(19,38,43,.06),0 4px 14px rgba(19,38,43,.06);
     --radius:.4rem; --wrap:84rem;
     color-scheme:light;
@@ -25,7 +25,7 @@
     :root:not([data-theme="light"]){
       --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
       --teal:#4FB5AC; --teal-dark:#76CDC5; --on-teal:#062220; --synth:#A99BFF; --synth-soft:#2A2550; --ring:#6F868B;
-      --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
+      --soft-bg:#173533; --soft-ink:#9EDCD5; --soft-line:#2E5753; --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
       --s-generated:#2A6E68; --s-validation:#3A8F87; --s-review:#52AEA5; --s-approved:#7ECBC3; --s-released:#B5E6E0; --s-rejected:#FF8A80;
       --shadow:0 1px 2px rgba(0,0,0,.3);
       color-scheme:dark;
@@ -34,7 +34,7 @@
   :root[data-theme="dark"]{
     --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
     --teal:#4FB5AC; --teal-dark:#76CDC5; --on-teal:#062220; --synth:#A99BFF; --synth-soft:#2A2550; --ring:#6F868B;
-    --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
+    --soft-bg:#173533; --soft-ink:#9EDCD5; --soft-line:#2E5753; --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
     --s-generated:#2A6E68; --s-validation:#3A8F87; --s-review:#52AEA5; --s-approved:#7ECBC3; --s-released:#B5E6E0; --s-rejected:#FF8A80;
     --shadow:0 1px 2px rgba(0,0,0,.3);
     color-scheme:dark;
@@ -75,6 +75,8 @@
     font:inherit;font-weight:700;padding:.55rem 1rem;border-radius:var(--radius);cursor:pointer;text-decoration:none;line-height:1.2;min-height:2.5rem;white-space:nowrap}
   .btn:hover{background:var(--teal-dark);border-color:var(--teal-dark)}
   .btn.sm{padding:.35rem .7rem;font-size:.88rem;min-height:2.1rem}
+  .btn.soft{background:var(--soft-bg);color:var(--soft-ink);border-color:var(--soft-line)}
+  .btn.soft:hover{background:var(--soft-bg);border-color:var(--teal);color:var(--soft-ink)}
   .btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--ring)}
   .btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
   .btn.danger{background:var(--err);border-color:var(--err);color:#fff}
@@ -108,7 +110,7 @@
 
   /* Stage strip */
   .strip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem}
-  .step{--c:var(--ring);width:100%;height:100%;text-align:left;background:var(--surface);border:1px solid var(--rule);border-top:5px solid var(--c);border-radius:var(--radius);
+  .step{--c:var(--ring);width:100%;height:100%;text-align:left;background:var(--surface);border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:var(--radius);
     padding:.7rem .85rem;cursor:pointer;font:inherit;color:inherit;display:flex;flex-direction:column;gap:.15rem}
   .step:hover{border-color:var(--teal);border-top-color:var(--c)}
   .step-n{font-size:1.9rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
@@ -159,7 +161,7 @@
   .seg-group{display:inline-flex;border:1px solid var(--ring);border-radius:var(--radius);overflow:hidden}
   .seg-btn{appearance:none;border:0;background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:.9rem;padding:.45rem .8rem;cursor:pointer;min-height:2.5rem}
   .seg-btn + .seg-btn{border-left:1px solid var(--ring)}
-  .seg-btn[aria-pressed="true"]{background:var(--teal);color:var(--on-teal)}
+  .seg-btn[aria-pressed="true"]{background:var(--soft-bg);color:var(--soft-ink);box-shadow:inset 0 -3px 0 var(--teal)}
 
   /* Forms */
   .fld{display:flex;flex-direction:column;gap:.3rem;min-width:0}
@@ -191,7 +193,7 @@
   /* Board */
   .board{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(14rem,1fr);gap:.75rem;overflow-x:auto;padding-bottom:.75rem;
     scroll-snap-type:x proximity;overscroll-behavior-x:contain}
-  .col{background:var(--surface-2);border-radius:.6rem;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;min-width:0;scroll-snap-align:start;border-top:5px solid var(--c)}
+  .col{background:var(--surface-2);border-radius:.6rem;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;min-width:0;scroll-snap-align:start;border-top:3px solid var(--c)}
   .col.drop-over{outline:2px dashed var(--teal);outline-offset:-2px}
   .col.flash{animation:flash 1.4s ease-out}
   @keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--synth)}100%{box-shadow:0 0 0 0 transparent}}
@@ -225,7 +227,7 @@
   .sc{display:grid;grid-template-columns:.9rem minmax(0,1fr) 1.7rem 2.3rem;align-items:center;gap:.4rem;font-size:.8rem}
   .sc-l{font-weight:700;color:var(--muted)}
   .sc-track{position:relative;height:.5rem;background:var(--surface-2);border-radius:4px}
-  .sc-fill{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:4px}
+  .sc-fill{position:absolute;left:0;top:0;bottom:0;background:var(--s-review);border-radius:4px}
   .sc.is-low .sc-fill{background:var(--err)}
   .sc-tick{position:absolute;top:-.22rem;bottom:-.22rem;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
   .sc-v{font-variant-numeric:tabular-nums;text-align:right;font-weight:700}
@@ -318,7 +320,7 @@
 
   /* Toasts */
   .toasts{position:fixed;left:1rem;bottom:1rem;display:flex;flex-direction:column;gap:.5rem;z-index:50;width:min(24rem,calc(100vw - 6.5rem));pointer-events:none}
-  .toast{background:var(--ink);color:var(--bg);padding:.65rem .9rem;border-radius:var(--radius);box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:.92rem;border-left:5px solid var(--s-validation);transition:opacity .25s ease}
+  .toast{background:var(--surface);color:var(--ink);border:1px solid var(--rule);padding:.65rem .9rem;border-radius:var(--radius);box-shadow:0 6px 20px rgba(19,38,43,.14);font-size:.92rem;border-left:5px solid var(--s-validation);transition:opacity .25s ease}
   .toast.warn{border-left-color:var(--warn-line)}
   .toast.err{border-left-color:var(--err)}
   .toast.out{opacity:0}
@@ -339,7 +341,7 @@
     .viewhead h1{font-size:1.4rem}
     .block{padding:1rem}
     .strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem}
-    .step{padding:.5rem .6rem;border-top-width:4px}
+    .step{padding:.5rem .6rem}
     .step-n{font-size:1.4rem}
     .step-l{font-size:.82rem}
     .attn{grid-template-columns:minmax(0,1fr)}
@@ -767,7 +769,7 @@
     var attn = items.length ? '<ul class="attn-list">' + items.map(function (it, i) {
       var target = it.id ? ' data-id="' + esc(it.id) + '"' : ' data-rid="' + esc(it.rid) + '"';
       return '<li class="attn"><span class="tag ' + it.cls + '">' + esc(it.tag) + '</span><p><strong>' + esc(it.name) + '</strong> ' + esc(it.text) + '</p>' +
-        '<button type="button" class="btn sm' + (it.cls === 'err' && it.act === 'reject-prefill' ? ' danger' : '') + '" data-act="' + it.act + '"' + target + ' data-fk="attn:' + it.act + ':' + esc(it.id || it.rid) + '"' + (it.busy ? ' disabled aria-busy="true"' : '') + '>' + esc(it.label) + '</button></li>';
+        '<button type="button" class="btn sm' + (it.cls === 'err' && it.act === 'reject-prefill' ? ' danger' : ' soft') + '" data-act="' + it.act + '"' + target + ' data-fk="attn:' + it.act + ':' + esc(it.id || it.rid) + '"' + (it.busy ? ' disabled aria-busy="true"' : '') + '>' + esc(it.label) + '</button></li>';
     }).join('') + '</ul>' : '<div class="empty"><p>All clear. Nothing needs action right now.</p></div>';
 
     var now = new Date();
@@ -832,7 +834,7 @@
       html += '<button type="button" class="btn ghost sm" data-act="back" data-id="' + id + '" data-fk="' + prefix + 'back:' + id + '" aria-label="Move ' + esc(c.name) + ' back to ' + esc(stageLabel(ORDER[i - 1])) + '">&larr; Back</button>';
     }
     var n = nextAction(c);
-    html += '<button type="button" class="btn sm' + (n.danger ? ' ghost danger-txt' : '') + '" data-act="' + n.act + '" data-id="' + id + '" data-fk="' + prefix + 'next:' + id + '"' +
+    html += '<button type="button" class="btn sm' + (n.danger ? ' ghost danger-txt' : ' soft') + '" data-act="' + n.act + '" data-id="' + id + '" data-fk="' + prefix + 'next:' + id + '"' +
       (n.busy ? ' disabled aria-busy="true"' : '') + ' aria-label="' + esc(n.label + ': ' + c.name) + '">' + (n.busy ? '<span class="spin" aria-hidden="true"></span>' : '') + esc(n.label) + '</button>';
     return html;
   }
@@ -890,7 +892,7 @@
       '<dl class="mins">' + METRICS.map(function (m) { return '<div><dt>Min ' + m.label.toLowerCase() + '</dt><dd>&ge; ' + esc(r[m.min]) + '</dd></div>'; }).join('') + '</dl>' +
       '<div class="req-bar">' + stageBar(cs) + (cs.length ? '<p class="small muted">' + esc(countsText(cs)) + '</p>' : '') + '</div>' +
       '<div class="req-actions">' +
-      (r.status === 'open' ? '<button type="button" class="btn sm" data-act="generate" data-rid="' + id + '" data-fk="gen:' + id + '"' + (gen ? ' disabled aria-busy="true"' : '') + '>' + (gen ? '<span class="spin" aria-hidden="true"></span>Generating…' : 'Run Generator agent') + '</button>' : '') +
+      (r.status === 'open' ? '<button type="button" class="btn sm soft" data-act="generate" data-rid="' + id + '" data-fk="gen:' + id + '"' + (gen ? ' disabled aria-busy="true"' : '') + '>' + (gen ? '<span class="spin" aria-hidden="true"></span>Generating…' : 'Run Generator agent') + '</button>' : '') +
       '<button type="button" class="btn ghost sm" data-act="view-in-pipeline" data-rid="' + id + '" data-fk="vip:' + id + '">View in pipeline</button>' +
       '<button type="button" class="btn ghost sm" data-act="edit-req" data-rid="' + id + '" data-fk="edit:' + id + '">Edit</button>' +
       '<button type="button" class="btn ghost sm" data-act="toggle-req" data-rid="' + id + '" data-fk="tog:' + id + '">' + (r.status === 'open' ? 'Close' : 'Reopen') + '</button>' +
@@ -932,7 +934,7 @@
     var past = booked.filter(function (c) { return !isUp(c); }).sort(function (a, b) { return (toDate(b.review.datetime) || 0) - (toDate(a.review.datetime) || 0); });
     var unbooked = S.candidates.filter(function (c) { return c.stage === 'review' && !c.review; });
     var notice = unbooked.length ? '<div class="notice warn" role="note"><p><strong>' + unbooked.length + (unbooked.length === 1 ? ' candidate is' : ' candidates are') + ' in Steward review with no session booked.</strong></p><ul>' +
-      unbooked.map(function (c) { return '<li><span>' + esc(c.name) + '</span><button type="button" class="btn sm" data-act="schedule" data-id="' + esc(c.id) + '" data-fk="nb:' + esc(c.id) + '">Book review</button></li>'; }).join('') + '</ul></div>' : '';
+      unbooked.map(function (c) { return '<li><span>' + esc(c.name) + '</span><button type="button" class="btn sm soft" data-act="schedule" data-id="' + esc(c.id) + '" data-fk="nb:' + esc(c.id) + '">Book review</button></li>'; }).join('') + '</ul></div>' : '';
     return '<div class="viewhead"><h1>Steward reviews</h1><p>Book a human review session for a candidate before sign-off. The agenda becomes the review notes.</p>' +
       '<button type="button" class="btn" data-act="schedule" data-fk="rv-new">Schedule review</button></div>' + notice +
       '<h2 class="sub-h">Upcoming <span class="pill">' + upcoming.length + '</span></h2>' +
@@ -992,7 +994,7 @@
     else if (c.scores) report = labTable(c, r) + (privacyFails(c) ? '<div class="notice err" style="margin-top:.6rem"><p>Privacy is below the minimum. This candidate cannot be signed off.</p></div>' : lowMetrics(c).length ? '<div class="notice warn" style="margin-top:.6rem"><p>Below minimum: ' + esc(lowText(c)) + '. Sign-off needs a written decision note.</p></div>' : '');
     else report = '<p class="muted">Not yet scored. Run the Validator agent (simulated) to score fidelity, privacy and utility.</p>';
     var reportBtns = locked ? '<p class="small muted">Released datasets are locked, so scores can\'t change.</p>' :
-      '<div class="btnrow"><button type="button" class="btn sm" data-act="validate-run" data-id="' + id + '" data-fk="p-val:' + id + '"' + (busy.val[c.id] ? ' disabled aria-busy="true"' : '') + '>' + (c.scores ? 'Re-run Validator' : 'Run Validator') + '</button>' +
+      '<div class="btnrow"><button type="button" class="btn sm soft" data-act="validate-run" data-id="' + id + '" data-fk="p-val:' + id + '"' + (busy.val[c.id] ? ' disabled aria-busy="true"' : '') + '>' + (c.scores ? 'Re-run Validator' : 'Run Validator') + '</button>' +
       '<button type="button" class="btn ghost sm" data-act="edit-scores" data-id="' + id + '" data-fk="p-edit:' + id + '">Edit scores</button></div>';
     var rv = c.review || {};
     var reviewSec = locked ? (c.review ? '<p>' + esc(showDT(rv.datetime)) + ' with <strong>' + esc(rv.steward) + '</strong></p>' + (rv.notes ? '<blockquote>' + esc(rv.notes) + '</blockquote>' : '') : '<p class="muted">No review recorded.</p>') :
@@ -1000,7 +1002,7 @@
       '<div class="fld"><label for="pr-dt">Date and time</label><input type="datetime-local" id="pr-dt" data-keep value="' + esc(draft('pr-dt', rv.datetime)) + '"><p class="field-err" id="pr-dt-err" hidden></p></div>' +
       '<div class="fld"><label for="pr-st">Steward</label><input id="pr-st" data-keep list="steward-list" maxlength="60" autocomplete="off" value="' + esc(draft('pr-st', rv.steward)) + '" placeholder="e.g. M. Okafor"><p class="field-err" id="pr-st-err" hidden></p></div>' +
       '<div class="fld full"><label for="pr-notes">Notes</label><textarea id="pr-notes" data-keep rows="3" maxlength="1500">' + esc(draft('pr-notes', rv.notes)) + '</textarea></div></div>' +
-      '<div class="btnrow"><button type="button" class="btn sm" data-act="save-review" data-id="' + id + '" data-fk="p-rsave:' + id + '">' + (c.review ? 'Save review' : 'Book review') + '</button>' +
+      '<div class="btnrow"><button type="button" class="btn sm soft" data-act="save-review" data-id="' + id + '" data-fk="p-rsave:' + id + '">' + (c.review ? 'Save review' : 'Book review') + '</button>' +
       (c.review ? '<button type="button" class="btn ghost sm danger-txt" data-act="remove-review" data-id="' + id + '" data-fk="p-rrm:' + id + '">Remove review</button>' : '') + '</div>';
     var sign = c.decision ? '<p>Signed off by <strong>' + esc(c.decision.by) + '</strong> on ' + esc(showDT(c.decision.at)) + '.</p>' + (c.decision.note ? '<blockquote>' + esc(c.decision.note) + '</blockquote>' : '<p class="muted small">No decision note.</p>')
       : '<p class="muted">Not signed off.</p>';
