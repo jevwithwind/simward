@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SimWard Pipeline | Synthetic dataset review prototype</title>
 <meta name="description" content="SimWard prototype: track data requests and synthetic dataset candidates from generation through validation and steward sign-off to release. Fictional data, simulated agents.">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<script>try{if(localStorage.getItem('simward.theme')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -20,16 +21,6 @@
     --shadow:0 1px 2px rgba(19,38,43,.06),0 4px 14px rgba(19,38,43,.06);
     --radius:.4rem; --wrap:84rem;
     color-scheme:light;
-  }
-  @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){
-      --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
-      --teal:#4FB5AC; --teal-dark:#76CDC5; --on-teal:#062220; --synth:#A99BFF; --synth-soft:#2A2550; --ring:#6F868B;
-      --soft-bg:#173533; --soft-ink:#9EDCD5; --soft-line:#2E5753; --err:#FF8A80; --err-bg:#3A1D1B; --warn:#F2C46B; --warn-bg:#3A2E12; --warn-line:#B8841F; --info-bg:#163331;
-      --s-generated:#2A6E68; --s-validation:#3A8F87; --s-review:#52AEA5; --s-approved:#7ECBC3; --s-released:#B5E6E0; --s-rejected:#FF8A80;
-      --shadow:0 1px 2px rgba(0,0,0,.3);
-      color-scheme:dark;
-    }
   }
   :root[data-theme="dark"]{
     --bg:#0E1A1D; --surface:#152428; --surface-2:#1D3035; --ink:#E4EDEF; --muted:#A3B5B9; --rule:#2B4046;
@@ -81,7 +72,6 @@
   .btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
   .btn.danger{background:var(--err);border-color:var(--err);color:#fff}
   :root[data-theme="dark"] .btn.danger{color:#2A0A08}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.danger{color:#2A0A08}}
   .btn.danger:hover{filter:brightness(.92)}
   .btn.ghost.danger-txt{color:var(--err)}
   .btn.ghost.danger-txt:hover{border-color:var(--err)}
@@ -103,6 +93,10 @@
   .block + .block, .ov-grid + .block, .block + .ov-grid{margin-top:1.25rem}
   .ov-grid > .block{margin-top:0}
   .ov-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1.25rem;margin-top:1.25rem}
+  .hire-map{list-style:none;margin:0 0 1.25rem;padding:0;display:flex;flex-wrap:wrap;gap:.4rem .5rem;align-items:center;font-size:.85rem;color:var(--muted)}
+  .hire-map li{background:var(--surface);border:1px solid var(--rule);border-radius:1rem;padding:.15rem .65rem}
+  .hire-map li.k{background:none;border:0;padding:0;font-weight:700;color:var(--ink)}
+  .hire-map strong{color:var(--ink)}
   .pill{font-size:.78rem;font-weight:700;background:var(--surface-2);color:var(--muted);border-radius:1rem;padding:.05rem .5rem}
   .empty{border:1px dashed var(--ring);border-radius:.6rem;padding:1.25rem;text-align:center;color:var(--muted);background:var(--surface)}
   .empty p{margin:0 0 .75rem}
@@ -379,6 +373,7 @@
     <span class="product">Pipeline</span>
     <span class="proto-tag">Prototype</span>
     <div class="top-actions">
+      <button type="button" class="btn ghost sm" data-act="theme" id="theme-btn" aria-pressed="false">Use dark theme</button>
       <button type="button" class="btn ghost sm" data-act="about">Learn more</button>
       <a href="../">Home</a>
     </div>
@@ -791,7 +786,10 @@
       }).join('') + '</tbody></table>'
       : '<div class="empty"><p>No open requests. Create one to start generating candidates.</p><button type="button" class="btn sm" data-act="new-req" data-fk="ov-new-req">Create a request</button></div>';
 
+    var map = [['Job postings', 'Requests'], ['Candidates', 'Synthetic datasets'], ['Evaluation', 'Fidelity, privacy, utility scores'], ['Interviews', 'Steward reviews'], ['Hired', 'Released']];
     return '<div class="viewhead"><h1>Overview</h1><p>Where every synthetic dataset candidate stands, and what needs doing next.</p></div>' +
+      '<ul class="hire-map" aria-label="How this prototype maps to a hiring assistant"><li class="k">Hiring assistant, applied to data:</li>' +
+      map.map(function (m) { return '<li>' + m[0] + ' &rarr; <strong>' + m[1] + '</strong></li>'; }).join('') + '</ul>' +
       '<section class="block" aria-labelledby="h-strip"><h2 id="h-strip">Pipeline stages</h2><ol class="strip">' + strip + '</ol>' + rejNote + '</section>' +
       '<div class="ov-grid"><section class="block" aria-labelledby="h-attn"><h2 id="h-attn">Needs attention <span class="pill">' + items.length + '</span></h2>' + attn + '</section>' +
       '<section class="block" aria-labelledby="h-up"><h2 id="h-up">Upcoming steward reviews <span class="pill">' + upcoming.length + '</span></h2>' + up + '</section></div>' +
@@ -1015,7 +1013,8 @@
       '<dt>Method</dt><dd>' + esc(c.method) + '</dd>' +
       '<dt>Rows</dt><dd>' + fmtRows(c.rows) + '</dd>' +
       '<dt>Generated</dt><dd>' + esc(showDT(c.generated)) + '</dd>' +
-      '<dt>Stage</dt><dd>' + esc(stageLabel(c.stage)) + '</dd></dl></section>' +
+      '<dt>Stage</dt><dd>' + esc(stageLabel(c.stage)) + '</dd></dl>' +
+      (locked ? '' : '<div class="btnrow"><button type="button" class="btn ghost sm" data-act="edit-cand" data-id="' + id + '" data-fk="p-editc:' + id + '">Edit details</button></div>') + '</section>' +
       '<section class="psec" aria-labelledby="ps-rep"><h3 id="ps-rep">Validation report</h3>' + report + reportBtns + '</section>' +
       '<section class="psec" aria-labelledby="ps-rev"><h3 id="ps-rev">Steward review</h3>' + reviewSec + '</section>' +
       '<section class="psec" aria-labelledby="ps-sign"><h3 id="ps-sign">Sign-off record</h3>' + sign + '</section>' +
@@ -1228,6 +1227,32 @@
       return true;
     }
     return false;
+  }
+  function openEditCandidate(cid) {
+    var c = cand(cid); if (!c) return;
+    if (c.stage === 'released') { toast('Released datasets are locked.', 'warn'); return; }
+    openDialog({
+      title: 'Edit ' + c.name,
+      body: '<div class="form-grid">' + fld('method', 'Method', '<select id="f-method" name="method">' + METHOD_NAMES.map(function (m) { return '<option' + (m === c.method ? ' selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select>') +
+        fld('rows', 'Rows', '<input id="f-rows" name="rows" type="number" inputmode="numeric" min="1000" max="5000000" step="1" value="' + esc(c.rows) + '">', '', '1,000–5,000,000') + '</div>' +
+        '<p class="small muted">The name stays ' + esc(c.name) + '. If you change the method, re-run the Validator to rescore it.</p>',
+      submit: 'Save details',
+      onSubmit: function (form) {
+        var f = form.elements, rows = intIn(f.rows.value.trim(), 1000, 5000000), e = {};
+        if (METHOD_NAMES.indexOf(f.method.value) === -1) e.method = 'Choose a method.';
+        if (rows === null) e.rows = 'Enter a whole number from 1,000 to 5,000,000.';
+        if (!fieldErrors(e)) return false;
+        var changes = [];
+        if (f.method.value !== c.method) changes.push('method ' + c.method + ' → ' + f.method.value);
+        if (rows !== c.rows) changes.push('rows ' + fmtRows(c.rows) + ' → ' + fmtRows(rows));
+        if (!changes.length) { toast('No changes to save.'); return; }
+        var methodChanged = f.method.value !== c.method;
+        c.method = f.method.value; c.rows = rows;
+        addLog('You', 'Edited ' + c.name + ': ' + changes.join(', ') + '.', c.id, c.requestId);
+        commit();
+        toast(c.name + ' updated.' + (methodChanged && c.scores ? ' Re-run the Validator to rescore with the new method.' : ''));
+      }
+    });
   }
   function openEditScores(cid) {
     var c = cand(cid); if (!c) return;
@@ -1542,6 +1567,8 @@
     var id = t.dataset.id, rid = t.dataset.rid;
     switch (t.dataset.act) {
       case 'about': openAbout(); break;
+      case 'theme': setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); break;
+      case 'edit-cand': openEditCandidate(id); break;
       case 'reset-ask': resetDemo(); break;
       case 'dlg-cancel': closeDlg(); break;
       case 'panel-close': closePanel(); break;
@@ -1659,7 +1686,21 @@
     requestMove(id, zone.dataset.drop);
   });
 
+  /* Theme: light by default to match the homepage; dark is opt-in and remembered. */
+  function syncThemeButton() {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark', b = $('#theme-btn');
+    b.textContent = dark ? 'Use light theme' : 'Use dark theme';
+    b.setAttribute('aria-pressed', dark ? 'true' : 'false');
+  }
+  function setTheme(t) {
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem('simward.theme', t); } catch (e) { /* ignore */ }
+    syncThemeButton();
+    toast(t === 'dark' ? 'Dark theme on.' : 'Light theme on.');
+  }
+
   /* ---------- start ---------- */
+  syncThemeButton();
   var corrupt = load();
   var h = location.hash.slice(1);
   ui.tab = TABS.indexOf(h) !== -1 ? h : 'overview';
