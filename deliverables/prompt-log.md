@@ -1,6 +1,6 @@
 # Week 3 prompt log
 
-Prompts sent to Claude Code for the Week 3 prototype and workflow diagram, in order.
+Every prompt I submitted for the Week 3 assignment, in order. One tool was used throughout: **Claude Code** (claude.ai/code), for both the prototype and the workflow diagram. Prompt 1 refers to the original `week3/` folder, which later moved to `deliverables/`.
 
 ---
 
@@ -251,3 +251,105 @@ Before drawing, list your assumptions in 3 bullets. Export `workflow.png` and `w
 (Follow-up answer: "Light page, heavy colours".)
 
 **What changed:** Lightened the pipeline page's light theme: soft tinted action buttons instead of solid dark teal, light toasts, thinner stage colour bars, and a lighter validated stage scale ending at the brand teal.
+
+## 3. 2026-10-02: colour re-check and assignment alignment (verbatim)
+
+````text
+#4 merged but color did not change to light tone, re-examine.
+Moreover, read the task instructions again and tune the project accordingly, also produce the deliverables (some can be reverse engineered from our output) and store them in a deliverable folder in the repo.
+Instructions:
+```
+Your Mission
+Your startup or work project is gaining momentum. Now, it's time to build the operational backbone:
+1. One AI-powered prototype (as covered in the video above) 
+2. A professional workflow diagram (as demonstrated with David on the previous screen)
+
+A prototype is a lightweight, early-stage version of an AI-powered idea used to explore feasibility, test assumptions, and learn what’s possible—without building or investing into a production-ready system.
+In this assignment, you'll use vibe coding to create one working prototype. Depending on which pathway option you chose, choose the prototype that would be most relevant to your path. Choose one option from the choices below: 
+
+1. A project management tool: that you will use to launch your website or plan your store’s grand opening or else
+2. A hiring assistant for recruitment
+
+Next, you’ll design a workflow diagram that gives a big picture perspective of the process. 
+1. Workflow diagram: Upload a process document to an AI tool and a structured prompt to generate a process flow
+
+By the end of this week, you’ll have a working prototype and a workflow diagram to help you get started on AI prototyping for business innovation. 
+
+Assignment Instructions
+For the deliverables below, keep a log of every prompt you submit — across any and all tools you use. This will be useful for your reflection and documentation.
+
+Part 1: Choose Your Vibe Coding Platform
+Select one platform to build your chosen prototypes. All recommended tools have free tiers, though with limitations.
+Part 2: Build Your Prototype
+Additional Instructions for Project Management Tool Prototype
+1. Step 1: Create an application that helps you manage the launch of your website or the grand opening of your physical store. Your timeline should reflect industry standards:
+    * Website launch: Typically 8–12 weeks for a professional site
+    * Retail store grand opening: Typically 12–16 weeks from lease signing
+    * Restaurant opening: Typically 16–24 weeks depending on permits and buildout
+    * Service business launch: Typically 4–8 weeks
+2. Step 2: Adjust based on your fictional startup's industry.
+    * Your project management tool should include:
+    * A timeline or Gantt-style view showing major milestones and deadlines
+    * Task lists broken down by phase or category (e.g., “Pre-Launch”, “Marketing”, “Operations”)
+    * Status tracking (Not Started, In Progress, Complete)
+    * Assignment capability (who is responsible for each task)
+    * A dashboard or overview showing progress at a glance
+3. Step 3: Sample prompt to get started:
+    * “Build a project management web app for launching an e-commerce website. Include a timeline view with milestones over 10 weeks, task lists organized by category (Design, Development, Content, Marketing, Testing, Launch), status tracking for each task, the ability to assign tasks to team members, and a dashboard showing overall progress. Use a clean, professional design”.
+Tips for Effective Prompting: be specific about features you need, mention the timeframe and industry context, and request a specific visual style if you have preference. If the first result isn't right, iterate—describe what to change.
+Part 3: Create Your Workflow Diagram 
+* Choose an AI tool: Open ChatGPT, Google Gemini, or Claude. If you have time, try more than one — the comparison is where the learning happens.
+* Upload a source document: this the where the tool can pull information to create your workflow 
+    * Note: you can find your own source document OR re-use the documents on the previous page to generate a similar diagram. 
+* Submit the prompt: Brainstorm and draft up your prompts, iterate as needed
+* Examine what comes back: Before moving on, spend a moment with your output. Did you get what you needed? Did the tool ask clarifying questions, or did it go straight to generating? What did it get right, and what's missing?
+Notice how quickly the AI produces a complex visual from a structured prompt — and notice how much the output depends on which tool you used and how it interpreted your instructions. That relationship between prompt, tool, and result is at the heart of everything you'll do in the assignment.
+
+Part 4: Test and Refine 
+Once your prototype and diagrams are generated, test them thoroughly. For your prototype, be sure to verify by asking:
+* Can you add, edit, and delete items (tasks, candidates)?
+* Does the status tracking work correctly?
+* Is the interface intuitive and visually coherent?
+* Does it handle edge cases (empty states, long text, many items)?
+If something doesn't work, describe the problem to the AI and ask it to fix it. 
+“The task status isn't updating when I click on it. Can you fix the status toggle so it cycles through Not Started, In Progress, and Complete when clicked?”
+“The candidate pipeline view is too cramped. Can you make each stage a column so I can see candidates in a Kanban-style board?”
+Part 4: What to Submit
+1. A link to your working prototype
+2. A copy of your workflow diagram (PDF or PNG or JPEG, one page visual document shows how the system or process works)
+3. A written reflection
+(300-400 words, consider:
+
+* What worked well in the programming of this project
+* what was not expected or frustrating
+* How might you use these tools in my actual professional role
+* What are the realistic limitations of AI-generated prototypes as such in real world business use)
+
+
+Tips for Success
+
+
+
+On platform limits: The free tiers are tight. Don't waste prompts on vague requests. Write detailed, specific prompts the first time. Consider drafting your prompts in a separate document before submitting them.
+
+On prompt engineering: The more specific you are, the better your results. Include details about features, layout, visual style, and user interactions. Think of yourself as a product manager writing requirements.
+
+On iteration: When something doesn't work, describe the specific problem rather than asking for a complete rebuild. Targeted fixes consume fewer tokens than starting over.
+
+On expectations: These prototypes won't be production-ready. They're functional demonstrations of concepts. That's the point—you're learning how quickly AI can get you from idea to working prototype, and where the gaps remain.
+
+On choosing between tools: If you're completely new to this, Lovable has the most intuitive interface. If you want to build more but have less daily interaction, Bolt new larger token pool may serve you better. Try whichever appeals to you—learning to navigate these tools is part of the assignment.
+Feedback Criteria
+Criteria
+Prototype functionality — Does the prototype work and include required features?
+Reflection quality — Does the reflection demonstrate genuine learning about vibe coding's potential and limitations?
+Tips for Success
+On platform limits: The free tiers are tight. Don't waste prompts on vague requests. Write detailed, specific prompts the first time. Consider drafting your prompts in a separate document before submitting them.
+On prompt engineering: The more specific you are, the better your results. Include details about features, layout, visual style, and user interactions. Think of yourself as a product manager writing requirements.
+On iteration: When something doesn't work, describe the specific problem rather than asking for a complete rebuild. Targeted fixes consume fewer tokens than starting over.
+On expectations: These prototypes won't be production-ready. They're functional demonstrations of concepts. That's the point—you're learning how quickly AI can get you from idea to working prototype, and where the gaps remain.
+On choosing between tools: If you're completely new to this, Lovable has the most intuitive interface. If you want to build more but have less daily interaction, Bolt new larger token pool may serve you better. Try whichever appeals to you—learning to navigate these tools is part of the assignment.
+```
+````
+
+**What changed:** The pipeline page now opens in the light theme regardless of the device's dark mode, with an optional, remembered "Use dark theme" toggle. Added "Edit details" for candidates and a hiring-assistant mapping strip on the Overview. Created this `deliverables/` folder: reflection, workflow source document and prompt, renamed diagram files, test report with screenshots, and a submission index.
